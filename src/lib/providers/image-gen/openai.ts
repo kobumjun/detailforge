@@ -13,9 +13,16 @@ export class OpenAIImageGenProvider implements ImageGenProvider {
           ? "1792x1024"
           : "1024x1024";
 
+    const grounded = [
+      "Depict only the described product category. No unrelated nature landscapes, oceans, forests, or generic scenery.",
+      input.prompt,
+    ]
+      .join(" ")
+      .slice(0, 3800);
+
     const res = await this.client.images.generate({
       model,
-      prompt: input.prompt.slice(0, 3500),
+      prompt: grounded,
       size: size as "1024x1024" | "1024x1792" | "1792x1024",
       n: 1,
     });

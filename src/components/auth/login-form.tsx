@@ -50,7 +50,9 @@ export function LoginForm() {
     <Card className="mx-auto w-full max-w-md border-border/80 shadow-lg">
       <CardHeader>
         <CardTitle className="text-xl">로그인</CardTitle>
-        <CardDescription>DetailForge 작업 공간으로 이동합니다.</CardDescription>
+        <CardDescription className="text-[13px] leading-relaxed">
+          계정으로 로그인해 작업을 이어가세요.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-4">

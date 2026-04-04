@@ -48,7 +48,7 @@ export function SignupForm() {
     }
     setDone(true);
     setMessage(
-      "확인 메일을 발송했습니다. 메일의 링크를 누르면 가입이 완료됩니다. (이메일 확인을 끈 프로젝트는 바로 로그인됩니다.)",
+      "가입 확인 메일을 보냈습니다. 메일의 링크를 눌러 가입을 마무리해 주세요.",
     );
   }
 
@@ -56,8 +56,8 @@ export function SignupForm() {
     <Card className="mx-auto w-full max-w-md border-border/80 shadow-lg">
       <CardHeader>
         <CardTitle className="text-xl">회원가입</CardTitle>
-        <CardDescription>
-          가입 즉시 3크레딧이 지급되어 바로 생성을 시험해 볼 수 있습니다.
+        <CardDescription className="text-[13px] leading-relaxed">
+          가입 시 3크레딧을 드립니다. 바로 상세페이지를 만들어 보세요.
         </CardDescription>
       </CardHeader>
       <CardContent>

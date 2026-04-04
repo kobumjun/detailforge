@@ -28,14 +28,16 @@ async function uploadUserImages(
         contentType: f.type || "image/png",
         upsert: false,
       });
-    if (upErr) throw new Error(upErr.message);
+    if (upErr) {
+      throw new Error("이미지를 업로드하지 못했습니다. 파일 형식과 용량을 확인해 주세요.");
+    }
 
     const { data, error: signErr } = await supabase.storage
       .from("uploads")
       .createSignedUrl(path, 60 * 60 * 24 * 7);
 
     if (signErr || !data?.signedUrl) {
-      throw new Error(signErr?.message || "signed url failed");
+      throw new Error("이미지 주소를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.");
     }
     urls.push(data.signedUrl);
   }
@@ -78,7 +80,10 @@ export async function generateDetailAction(
   });
 
   if (rpcErr) {
-    return { ok: false, message: rpcErr.message };
+    return {
+      ok: false,
+      message: "크레딧 처리 중 문제가 발생했습니다. 새로고침 후 다시 시도해 주세요.",
+    };
   }
 
   const rpc = rpcData as { ok?: boolean; error?: string } | null;
@@ -119,7 +124,7 @@ export async function generateDetailAction(
       .single();
 
     if (insErr || !row) {
-      throw new Error(insErr?.message || "저장 실패");
+      throw new Error("결과를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     }
 
     revalidatePath("/create");

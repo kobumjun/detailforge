@@ -46,7 +46,10 @@ export async function startCheckoutAction(
     .single();
 
   if (error) {
-    return { ok: false, message: error.message };
+    return {
+      ok: false,
+      message: "주문 기록에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+    };
   }
 
   revalidatePath("/billing");
@@ -62,6 +65,6 @@ export async function startCheckoutAction(
       result.message ||
       (result.checkoutUrl
         ? "결제 페이지로 이동합니다."
-        : "주문이 기록되었습니다. 결제 연동 후 크레딧이 자동 지급됩니다."),
+        : "요청이 접수되었습니다. 결제가 완료되면 크레딧이 반영됩니다."),
   };
 }

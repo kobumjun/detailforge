@@ -6,7 +6,7 @@ import {
   ImageIcon,
   Layers,
   Sparkles,
-  Wand2,
+  LayoutTemplate,
 } from "lucide-react";
 import { buttonVariants } from "@/lib/button-variants";
 import { Badge } from "@/components/ui/badge";
@@ -21,23 +21,23 @@ import { cn } from "@/lib/utils";
 
 const features = [
   {
-    title: "설명만으로 구조 잡기",
-    body: "상품 카피를 넣으면 헤드라인·혜택·시나리오·CTA까지 상세페이지 흐름을 자동 배치합니다.",
+    title: "카피만으로 섹션 구성",
+    body: "상품 설명을 넣으면 헤드라인·혜택·사용 맥락·구매 유도까지, 판매 흐름에 맞춰 블록을 자동으로 배치합니다.",
     icon: Layers,
   },
   {
-    title: "사진 업로드 & AI 보강",
-    body: "직접 촬영한 이미지를 올리거나, 부족한 구간은 AI 이미지로 채우는 하이브리드 옵션을 지원합니다.",
+    title: "사진 업로드와 AI 보완",
+    body: "직접 찍은 컷을 올리거나, 비어 있는 구간은 상품에 맞는 비주얼로 채울 수 있습니다.",
     icon: ImageIcon,
   },
   {
-    title: "PNG로 바로보내기",
-    body: "브라우저 장난이 아니라 서버에서 HTML을 렌더해 긴 세로형 PNG 파일로 저장·다운로드합니다.",
+    title: "바로 쓰는 이미지 파일",
+    body: "세로형 롱폼 레이아웃을 한 장의 이미지로 받아 쇼핑몰·SNS·기획안에 바로 활용하세요.",
     icon: Download,
   },
   {
-    title: "크레딧 기반 과금 구조",
-    body: "생성 1회 1크레딧. 가입 시 3크레딧 지급. 결제 프로바이더만 바꿔 붙이면 바로 유료화할 수 있습니다.",
+    title: "크레딧으로 쓰는 만큼만",
+    body: "생성 한 번에 크레딧 1회. 가입 시 제공되는 크레딧으로 먼저 경험해 보세요.",
     icon: Sparkles,
   },
 ];
@@ -45,7 +45,7 @@ const features = [
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-50 border-b border-border/70 bg-background/75 backdrop-blur-lg">
+      <header className="sticky top-0 z-50 border-b border-border/70 bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
           <span className="text-sm font-semibold tracking-tight">DetailForge</span>
           <nav className="flex items-center gap-2 sm:gap-3">
@@ -56,7 +56,7 @@ export default function LandingPage() {
               로그인
             </Link>
             <Link href="/signup" className={cn(buttonVariants({ size: "sm" }))}>
-              회원가입
+              무료 시작
             </Link>
           </nav>
         </div>
@@ -69,24 +69,24 @@ export default function LandingPage() {
             variant="secondary"
             className="mb-6 border border-border/80 bg-background/80 px-3 py-1 text-[11px] font-medium tracking-wide"
           >
-            AI 상세페이지 스튜디오
+            상세페이지 제작 스튜디오
           </Badge>
-          <h1 className="max-w-3xl text-4xl font-semibold leading-[1.1] tracking-tight sm:text-5xl sm:leading-[1.08]">
+          <h1 className="max-w-[22ch] text-[2.125rem] font-bold leading-[1.12] tracking-[-0.035em] sm:text-5xl sm:leading-[1.08]">
             몇 분 만에 완성하는
-            <span className="block bg-gradient-to-r from-foreground via-foreground to-foreground/50 bg-clip-text text-transparent">
-              프리미엄 상품 상세페이지
+            <span className="mt-1 block text-foreground/90">
+              판매용 상품 상세페이지
             </span>
           </h1>
-          <p className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-            카피와 이미지를 연결하고, 세로형 레이아웃으로 바로 PNG까지. DetailForge는
-            실제로 판매 가능한 결과물을 목표로 설계되었습니다.
+          <p className="mt-6 max-w-xl text-[15px] leading-[1.75] text-muted-foreground sm:text-[17px] sm:leading-[1.7]">
+            텍스트와 이미지를 정리하면 세로형 레이아웃이 만들어집니다. 기획부터
+            시안 공유까지, 한 화면에서 끝내세요.
           </p>
           <div className="mt-10 flex flex-wrap gap-3">
             <Link
               href="/signup"
               className={cn(
                 buttonVariants({ size: "lg" }),
-                "inline-flex items-center gap-2 rounded-full px-6",
+                "inline-flex items-center gap-2 rounded-full px-7 text-[15px] font-semibold",
               )}
             >
               무료로 시작하기
@@ -96,26 +96,26 @@ export default function LandingPage() {
               href="/login"
               className={cn(
                 buttonVariants({ size: "lg", variant: "outline" }),
-                "rounded-full px-6",
+                "rounded-full px-7 text-[15px] font-medium",
               )}
             >
               로그인
             </Link>
           </div>
-          <p className="mt-4 text-xs text-muted-foreground">
-            회원가입 시 3크레딧 · 생성 1회당 1크레딧
+          <p className="mt-4 text-[12px] leading-relaxed text-muted-foreground">
+            회원가입 시 3크레딧 제공 · 상세페이지 1회 생성 시 1크레딧 사용
           </p>
         </div>
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
         <div className="mb-12 max-w-2xl">
-          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            판매 페이지를 데이터가 아니라 디자인으로
+          <h2 className="text-[1.625rem] font-bold leading-snug tracking-[-0.03em] sm:text-3xl">
+            긴 상세페이지도 디자인으로 읽히게
           </h2>
-          <p className="mt-3 text-muted-foreground">
-            단순 텍스트 덤프가 아니라, 섹션별 비주얼이 갖춰진 롱폼 상세페이지를
-            만듭니다.
+          <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
+            문단만 나열하지 않고, 이미지와 텍스트가 번갈아 리듬을 만드는 롱폼
+            구조를 지향합니다.
           </p>
         </div>
         <div className="grid gap-5 sm:grid-cols-2">
@@ -129,8 +129,10 @@ export default function LandingPage() {
                   <f.icon className="size-5 text-foreground/80" />
                 </div>
                 <div>
-                  <CardTitle className="text-base font-semibold">{f.title}</CardTitle>
-                  <CardDescription className="mt-2 text-sm leading-relaxed">
+                  <CardTitle className="text-[15px] font-semibold leading-snug tracking-[-0.02em]">
+                    {f.title}
+                  </CardTitle>
+                  <CardDescription className="mt-2 text-[14px] leading-relaxed">
                     {f.body}
                   </CardDescription>
                 </div>
@@ -143,31 +145,34 @@ export default function LandingPage() {
       <section className="border-y border-border/60 bg-muted/20 py-20">
         <div className="mx-auto grid max-w-6xl gap-12 px-4 sm:grid-cols-2 sm:px-6 sm:items-center">
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-              예시 목업
+            <h2 className="text-[1.625rem] font-bold leading-snug tracking-[-0.03em] sm:text-3xl">
+              레이아웃 미리보기
             </h2>
-            <p className="mt-3 text-muted-foreground">
-              템플릿은 Aurora · Minimal · Editorial 세 가지. 톤과 색감에 맞춰
-              카드형 섹션이 자동으로 이어집니다.
+            <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
+              Aurora, Minimal, Editorial 세 가지 톤 중에서 브랜드에 맞는 분위기를
+              고를 수 있습니다.
             </p>
-            <ul className="mt-6 space-y-3 text-sm">
-              {["히어로 + 핵심 이미지", "혜택 교차 배치", "사용 시나리오", "구매 유도 CTA"].map(
-                (t) => (
-                  <li key={t} className="flex items-center gap-2">
-                    <span className="flex size-5 items-center justify-center rounded-full bg-foreground/10">
-                      <Check className="size-3" />
-                    </span>
-                    {t}
-                  </li>
-                ),
-              )}
+            <ul className="mt-6 space-y-3 text-[14px] leading-relaxed">
+              {[
+                "히어로 · 핵심 메시지",
+                "혜택과 비주얼 교차",
+                "사용 맥락 안내",
+                "구매 유도 영역",
+              ].map((t) => (
+                <li key={t} className="flex items-center gap-2">
+                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-foreground/10">
+                    <Check className="size-3" />
+                  </span>
+                  {t}
+                </li>
+              ))}
             </ul>
           </div>
           <Card className="overflow-hidden border-border/80 shadow-lg">
             <div className="border-b border-border/60 bg-card px-6 py-4">
-              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                <Wand2 className="size-3.5" />
-                Preview
+              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                <LayoutTemplate className="size-3.5" />
+                Sample layout
               </div>
             </div>
             <CardContent className="space-y-4 bg-gradient-to-b from-muted/30 to-background p-6">
@@ -191,31 +196,33 @@ export default function LandingPage() {
 
       <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
         <div className="mb-10 max-w-2xl">
-          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            크레딧 & 요금
+          <h2 className="text-[1.625rem] font-bold leading-snug tracking-[-0.03em] sm:text-3xl">
+            크레딧 안내
           </h2>
-          <p className="mt-3 text-muted-foreground">
-            지금은 Mock 결제로 주문 레코드만 남기고, LemonSqueezy 등 프로바이더 키를
-            넣으면 같은 UI에서 실결제로 전환됩니다.
+          <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
+            사용한 만큼만 정산되는 구조입니다. 팀 단위·대량 제작이 필요하면 큰
+            패키지를 선택하세요.
           </p>
         </div>
         <div className="grid gap-5 md:grid-cols-3">
           {[
-            { n: "10", d: "가볍게 테스트" },
-            { n: "30", d: "팀 단위 제작", highlight: true },
-            { n: "100", d: "대량·에이전시" },
+            { n: "10", d: "가볍게 시작" },
+            { n: "30", d: "팀·스튜디오", highlight: true },
+            { n: "100", d: "대량 제작" },
           ].map((p) => (
             <Card
               key={p.n}
-              className={`border-border/80 shadow-sm ${p.highlight ? "ring-1 ring-foreground/15" : ""}`}
+              className={`border-border/80 shadow-sm ${p.highlight ? "ring-1 ring-foreground/12" : ""}`}
             >
               <CardHeader>
-                <CardTitle className="text-lg">{p.n} 크레딧</CardTitle>
-                <CardDescription>{p.d}</CardDescription>
+                <CardTitle className="text-lg font-semibold tracking-tight">
+                  {p.n} 크레딧
+                </CardTitle>
+                <CardDescription className="text-[14px]">{p.d}</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  생성 {p.n}회 분량 · 패키지는 /billing 에서 선택
+                <p className="text-[13px] leading-relaxed text-muted-foreground">
+                  상세페이지 약 {p.n}회 분량 · 충전은 앱 내 크레딧 메뉴에서
                 </p>
               </CardContent>
             </Card>
@@ -224,7 +231,7 @@ export default function LandingPage() {
       </section>
 
       <footer className="border-t border-border/60 py-10">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 text-sm text-muted-foreground sm:flex-row sm:px-6">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 text-[13px] text-muted-foreground sm:flex-row sm:px-6">
           <span>© {new Date().getFullYear()} DetailForge</span>
           <div className="flex gap-4">
             <Link href="/login" className="hover:text-foreground">

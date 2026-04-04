@@ -27,7 +27,7 @@ export class LemonSqueezyBillingProvider implements BillingProvider {
       return {
         ok: false,
         provider: this.id,
-        message: "LemonSqueezy 환경변수가 설정되지 않았습니다.",
+        message: "결제 설정이 완료되지 않았습니다. 관리자에게 문의해 주세요.",
       };
     }
 
@@ -35,8 +35,7 @@ export class LemonSqueezyBillingProvider implements BillingProvider {
     return {
       ok: false,
       provider: this.id,
-      message:
-        "LemonSqueezy 체크아웃 API 호출은 키 발급 후 이 클래스에 연결하세요.",
+      message: "결제 창을 열 수 없습니다. 설정을 확인한 뒤 다시 시도해 주세요.",
     };
   }
 }

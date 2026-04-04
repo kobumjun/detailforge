@@ -11,7 +11,7 @@ export class MockBillingProvider implements BillingProvider {
       provider: this.id,
       orderId: randomUUID(),
       message:
-        "결제 연동 전입니다. LemonSqueezy 또는 PG 키를 설정하면 실제 결제로 전환됩니다.",
+        "결제 수단 연결 전입니다. 주문 요청은 접수되었으며, 결제가 열리면 크레딧이 자동 반영됩니다.",
     };
   }
 }

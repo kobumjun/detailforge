@@ -14,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DetailForge — AI 상세페이지 생성",
+  title: "DetailForge — 상품 상세페이지 제작",
   description:
-    "상품 설명과 이미지로 세로형 상세페이지를 만들고 PNG로 다운로드하세요.",
+    "상품 설명과 이미지로 세로형 상세페이지를 구성하고, 바로 활용할 수 있는 이미지 파일로 받아보세요.",
 };
 
 export default function RootLayout({

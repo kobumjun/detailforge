@@ -23,7 +23,7 @@ export const CREDIT_PACKS: Record<
   CreditPackId,
   { label: string; credits: number; description: string }
 > = {
-  pack_10: { label: "Starter", credits: 10, description: "가볍게 시작하기" },
-  pack_30: { label: "Growth", credits: 30, description: "팀 단위 제작" },
-  pack_100: { label: "Scale", credits: 100, description: "대량·에이전시" },
+  pack_10: { label: "라이트", credits: 10, description: "먼저 써보기 좋은 분량" },
+  pack_30: { label: "스탠다드", credits: 30, description: "팀·스튜디오용" },
+  pack_100: { label: "프로", credits: 100, description: "대량 제작·에이전시" },
 };

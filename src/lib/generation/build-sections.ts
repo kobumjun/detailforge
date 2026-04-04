@@ -1,16 +1,70 @@
+import { pickCategoryStockUrl } from "@/lib/generation/category-stock";
+import { buildCommerceImagePrompt } from "@/lib/generation/image-prompts";
+import { inferVisualCategory } from "@/lib/generation/visual-category";
 import { getImageGenProvider } from "@/lib/providers/image-gen";
 import { getTextGenProvider } from "@/lib/providers/text-gen";
+import type { ImageSlotRole } from "@/lib/providers/image-gen/types";
 import type {
   DetailSection,
   GenerationOptions,
   GenerationPayload,
 } from "./types";
 
+const FEATURE_ROLES: ImageSlotRole[] = [
+  "texture_detail",
+  "usage_context",
+  "feature_support",
+];
+
+async function generateProductImage(
+  image: ReturnType<typeof getImageGenProvider>,
+  args: {
+    slotRole: ImageSlotRole;
+    aspect: "square" | "landscape" | "portrait";
+    options: GenerationOptions;
+    category: ReturnType<typeof inferVisualCategory>;
+    sectionTitle?: string;
+    sectionBody?: string;
+  },
+): Promise<string> {
+  const prompt = buildCommerceImagePrompt({
+    slotRole: args.slotRole,
+    productDescription: args.options.productDescription,
+    targetCustomer: args.options.targetCustomer,
+    sellingPoints: args.options.sellingPoints,
+    category: args.category,
+    sectionTitle: args.sectionTitle,
+    sectionBody: args.sectionBody,
+  });
+
+  const input = {
+    prompt,
+    aspect: args.aspect,
+    slotRole: args.slotRole,
+    categoryKey: args.category.key,
+  };
+
+  try {
+    return await image.generate(input);
+  } catch {
+    return pickCategoryStockUrl(
+      args.category.key,
+      `${prompt}|${args.slotRole}|fallback`,
+    );
+  }
+}
+
 export async function buildGenerationPayload(
   options: GenerationOptions,
 ): Promise<GenerationPayload> {
   const text = getTextGenProvider();
   const image = getImageGenProvider();
+
+  const category = inferVisualCategory({
+    productDescription: options.productDescription,
+    targetCustomer: options.targetCustomer,
+    sellingPoints: options.sellingPoints,
+  });
 
   const copy = await text.generate({
     productDescription: options.productDescription,
@@ -32,9 +86,11 @@ export async function buildGenerationPayload(
 
   let heroImg = nextUserUrl();
   if (!heroImg && options.aiFillImages) {
-    heroImg = await image.generate({
-      prompt: `${options.productDescription} hero shot, premium catalog style`,
+    heroImg = await generateProductImage(image, {
+      slotRole: "hero",
       aspect: "landscape",
+      options,
+      category,
     });
   }
 
@@ -47,12 +103,18 @@ export async function buildGenerationPayload(
     },
   ];
 
-  for (const b of copy.benefits) {
+  for (let i = 0; i < copy.benefits.length; i++) {
+    const b = copy.benefits[i];
     let img = nextUserUrl();
     if (!img && options.aiFillImages) {
-      img = await image.generate({
-        prompt: `${options.productDescription}. ${b.title}. ${b.body.slice(0, 160)}`,
+      const slotRole = FEATURE_ROLES[i % FEATURE_ROLES.length]!;
+      img = await generateProductImage(image, {
+        slotRole,
         aspect: "portrait",
+        options,
+        category,
+        sectionTitle: b.title,
+        sectionBody: b.body,
       });
     }
     sections.push({

@@ -28,6 +28,18 @@ type OrderRow = {
   created_at: string;
 };
 
+function orderStatusLabel(status: string) {
+  if (status === "pending") return "접수됨";
+  if (status === "failed") return "실패";
+  if (status === "paid" || status === "completed") return "완료";
+  return status;
+}
+
+function providerLabel(provider: string) {
+  if (provider === "mock") return "결제 준비 중";
+  return provider;
+}
+
 export function BillingPlans({ recentOrders }: { recentOrders: OrderRow[] }) {
   const [state, formAction, pending] = useActionState<
     CheckoutState | undefined,
@@ -43,12 +55,11 @@ export function BillingPlans({ recentOrders }: { recentOrders: OrderRow[] }) {
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+        <h1 className="text-2xl font-bold tracking-[-0.03em] sm:text-[1.75rem]">
           크레딧 충전
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          생성 1회당 1크레딧이 사용됩니다. 결제는 프로바이더 설정 후 자동으로
-          연결됩니다.
+        <p className="mt-1.5 text-[14px] leading-relaxed text-muted-foreground">
+          상세페이지 1회 제작 시 크레딧 1이 사용됩니다.
         </p>
       </div>
 
@@ -58,17 +69,21 @@ export function BillingPlans({ recentOrders }: { recentOrders: OrderRow[] }) {
           return (
             <Card
               key={id}
-              className="flex flex-col border-border/80 shadow-sm transition hover:border-foreground/20"
+              className="flex flex-col border-border/80 shadow-sm transition hover:border-foreground/15"
             >
               <CardHeader>
                 <div className="flex items-center justify-between gap-2">
-                  <CardTitle className="text-lg">{pack.label}</CardTitle>
+                  <CardTitle className="text-lg font-semibold tracking-tight">
+                    {pack.label}
+                  </CardTitle>
                   <Badge variant="secondary">{pack.credits} 크레딧</Badge>
                 </div>
-                <CardDescription>{pack.description}</CardDescription>
+                <CardDescription className="text-[13px] leading-relaxed">
+                  {pack.description}
+                </CardDescription>
               </CardHeader>
-              <CardContent className="flex-1 text-sm text-muted-foreground">
-                상세페이지 생성에 바로 사용할 수 있는 크레딧 번들입니다.
+              <CardContent className="flex-1 text-[13px] leading-relaxed text-muted-foreground">
+                결제가 열리면 같은 화면에서 바로 충전이 완료됩니다.
               </CardContent>
               <CardFooter>
                 <form action={formAction} className="w-full">
@@ -76,9 +91,9 @@ export function BillingPlans({ recentOrders }: { recentOrders: OrderRow[] }) {
                   <Button
                     type="submit"
                     disabled={pending}
-                    className="w-full"
+                    className="w-full font-semibold"
                   >
-                    결제하기
+                    결제 진행
                   </Button>
                 </form>
               </CardFooter>
@@ -89,25 +104,33 @@ export function BillingPlans({ recentOrders }: { recentOrders: OrderRow[] }) {
 
       <Card className="mt-10 border-border/80 shadow-sm">
         <CardHeader>
-          <CardTitle className="text-base">최근 주문</CardTitle>
-          <CardDescription>Mock / LemonSqueezy 연동 시 상태가 갱신됩니다.</CardDescription>
+          <CardTitle className="text-[15px] font-semibold tracking-tight">
+            최근 요청
+          </CardTitle>
+          <CardDescription className="text-[13px] leading-relaxed">
+            결제·충전 요청 기록입니다.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           {recentOrders.length === 0 ? (
-            <p className="text-muted-foreground">주문 기록이 없습니다.</p>
+            <p className="text-[13px] text-muted-foreground">
+              아직 요청 내역이 없습니다.
+            </p>
           ) : (
             recentOrders.map((o) => (
               <div
                 key={o.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 px-3 py-2"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 px-3 py-2.5"
               >
-                <span className="text-muted-foreground">
+                <span className="text-[12px] text-muted-foreground">
                   {new Date(o.created_at).toLocaleString("ko-KR")}
                 </span>
-                <span className="font-medium">
-                  {o.credits_requested} 크레딧 · {o.provider}
+                <span className="text-[13px] font-medium">
+                  {o.credits_requested} 크레딧 · {providerLabel(o.provider)}
                 </span>
-                <Badge variant="outline">{o.status}</Badge>
+                <Badge variant="outline" className="text-[11px]">
+                  {orderStatusLabel(o.status)}
+                </Badge>
               </div>
             ))
           )}

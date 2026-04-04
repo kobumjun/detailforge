@@ -1,13 +1,14 @@
+import { pickCategoryStockUrl } from "@/lib/generation/category-stock";
+import type { VisualCategoryKey } from "@/lib/generation/visual-category";
 import type { ImageGenInput, ImageGenProvider } from "./types";
 
-/** Deterministic placeholder image from product keywords (no external API). */
+/**
+ * Category-aligned stock stills — deterministic per prompt/slot (no random scenery).
+ */
 export class MockImageGenProvider implements ImageGenProvider {
   async generate(input: ImageGenInput): Promise<string> {
-    const seed =
-      Array.from(input.prompt).reduce((a, c) => a + c.charCodeAt(0), 0) %
-      1000;
-    const w = 800;
-    const h = input.aspect === "portrait" ? 1000 : input.aspect === "landscape" ? 500 : 800;
-    return `https://picsum.photos/seed/detailforge${seed}/${w}/${h}`;
+    const key: VisualCategoryKey = input.categoryKey ?? "general";
+    const seed = `${input.prompt}|${input.slotRole ?? "slot"}|${input.aspect ?? "sq"}`;
+    return pickCategoryStockUrl(key, seed);
   }
 }

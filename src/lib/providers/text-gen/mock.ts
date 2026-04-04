@@ -1,10 +1,22 @@
 import type { TextGenInput, TextGenOutput, TextGenProvider } from "./types";
 
 const tonePhrases: Record<string, { lead: string; cta: string }> = {
-  premium: { lead: "프리미엄의 기준을 다시 세우다", cta: "지금, 특별한 경험을 시작하세요" },
-  emotional: { lead: "일상에 스며드는 작은 행복", cta: "당신의 하루를 함께합니다" },
-  minimal: { lead: "필요한 것만, 정확하게", cta: "간결한 선택, 오래가는 만족" },
-  aggressive: { lead: "지금 결정하면 차이가 납니다", cta: "한정 혜택, 놓치지 마세요" },
+  premium: {
+    lead: "기대 이상의 완성도",
+    cta: "지금 바로 만나보세요",
+  },
+  emotional: {
+    lead: "하루를 바꾸는 작은 디테일",
+    cta: "당신의 일상에 담아보세요",
+  },
+  minimal: {
+    lead: "필요한 것만, 깔끔하게",
+    cta: "간결하게 선택하세요",
+  },
+  aggressive: {
+    lead: "지금이 가장 합리적인 순간",
+    cta: "망설임은 재고만 줄입니다",
+  },
 };
 
 export class MockTextGenProvider implements TextGenProvider {
@@ -19,52 +31,55 @@ export class MockTextGenProvider implements TextGenProvider {
       input.length === "short" ? 2 : input.length === "medium" ? 3 : 4;
 
     const benefits: TextGenOutput["benefits"] = [];
-    const templates = [
+
+    const pool = [
       {
-        title: "검증된 품질",
-        body: `${p}는 엄선된 재료와 공정으로 완성되어, 매 사용마다 일관된 만족을 드립니다.`,
+        title: "왜 지금 이 제품인가요",
+        body: `${p}는 반복 구매까지 이어지도록, 첫 사용부터 차이가 느껴지게 설계했습니다.`,
       },
       {
-        title: "체감되는 차이",
+        title: "이렇게 달라집니다",
         body: target
-          ? `${target}에게 특히 잘 맞도록 설계되어, 사용 순간부터 차별점이 분명합니다.`
-          : "사용 순간부터 느껴지는 차별화된 완성도를 목표로 합니다.",
+          ? `${target}의 루틴에 맞춰 불편을 줄이고, 기대했던 결과에 더 빨리 도달하도록 구성했습니다.`
+          : "매일 쓰는 순간마다 체감되는 편안함과 만족에 초점을 맞췄습니다.",
       },
       {
-        title: "편안한 일상",
-        body: "바쁜 일상 속에서도 부담 없이 누릴 수 있도록, 사용성과 관리 편의를 고려했습니다.",
+        title: "믿고 고를 수 있는 이유",
+        body: "성분·소재·마감까지 꼼꼼히 관리해, 한 번이 아니라 오래 함께할 수 있는 품질을 지향합니다.",
       },
       {
-        title: "지속 가능한 선택",
-        body: "한 번이 아니라 꾸준히 찾게 되는 이유가 있는, 오래 가는 가치를 담았습니다.",
+        title: "부담 없이 시작하세요",
+        body: "처음엔 가볍게, 익숙해질수록 확신이 생기도록 사용 흐름을 단순하게 잡았습니다.",
       },
     ];
 
     for (let i = 0; i < benefitCount; i++) {
-      benefits.push(templates[i % templates.length]);
+      benefits.push({ ...pool[i % pool.length]! });
     }
 
     if (accent) {
       benefits[0] = {
-        title: "핵심 포인트",
+        title: "한눈에 보는 핵심",
         body: accent,
       };
     }
 
-    const palette = color ? ` 컬러 무드: ${color}.` : "";
+    const colorLine = color
+      ? ` ${color} 톤을 염두에 두고 구성했습니다.`
+      : "";
 
     return {
-      headline: `${p} — ${tone.lead}`,
-      subcopy: `${target ? `${target}을 위한 ` : ""}세심하게 다듬은 구성.${palette} 지금 바로 경험해보세요.`,
+      headline: `${p} · ${tone.lead}`,
+      subcopy: `비슷한 선택지 사이에서 고민이 길어질수록, 작은 차이가 큰 만족으로 이어집니다.${target ? ` ${target}에게 특히 잘 맞도록 정리했습니다.` : ""}${colorLine}`,
       benefits,
-      scenarioTitle: "이런 순간에 특히 빛납니다",
+      scenarioTitle: "이럴 때 가장 잘 맞아요",
       scenarioBody:
         input.length === "short"
-          ? "출근 전 준비, 퇴근 후 휴식. 작은 루틴이 달라질 때 만족도는 커집니다."
-          : "바쁜 아침 준비부터 주말 여유까지. 다양한 상황에서도 자연스럽게 스며들며, 사용할수록 익숙해지는 편안함을 지향합니다.",
+          ? "바쁜 아침, 짧은 휴식, 주말 루틴까지. 자주 마주치는 순간에 자연스럽게 스며듭니다."
+          : "평일은 빠르게, 주말은 여유롭게. 사용 환경이 바뀌어도 부담 없이 이어지도록 구성했습니다.",
       ctaTitle: tone.cta,
       ctaBody:
-        "궁금한 점이 있다면 언제든 문의해 주세요. 빠르게 도와드리겠습니다.",
+        "배송·교환·문의 등 궁금한 점은 언제든 남겨 주세요. 빠르게 안내드리겠습니다.",
     };
   }
 }

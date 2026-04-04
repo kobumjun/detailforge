@@ -44,6 +44,16 @@ type GenRow = {
   created_at: string;
 };
 
+function creditLogLabel(reason: string | null, type: string) {
+  if (reason === "signup_bonus") return "가입 축하 크레딧";
+  if (reason === "generation") return "상세페이지 생성";
+  if (reason === "generation_failed") return "생성 실패 환불";
+  if (type === "refund") return "크레딧 환불";
+  if (type === "consume") return "크레딧 사용";
+  if (reason) return reason;
+  return type;
+}
+
 export function CreateWorkbench({
   creditLogs,
   recentGenerations,
@@ -65,7 +75,7 @@ export function CreateWorkbench({
   useEffect(() => {
     if (!state) return;
     if (state.ok) {
-      toast.success("상세페이지가 생성되었습니다.");
+      toast.success("새 상세페이지가 준비되었습니다.");
       router.replace(`/create?g=${state.generationId}`);
       startTransition(() => {
         setPreviews([]);
@@ -93,11 +103,12 @@ export function CreateWorkbench({
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <div className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-            상세페이지 생성
+          <h1 className="text-2xl font-bold tracking-[-0.03em] text-foreground sm:text-[1.75rem]">
+            상세페이지 만들기
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            입력과 이미지를 바탕으로 세로형 상세페이지를 구성하고 PNG로보냅니다.
+          <p className="mt-1.5 text-[14px] leading-relaxed text-muted-foreground">
+            입력 내용을 바탕으로 세로형 레이아웃을 구성합니다. 완성 후 이미지로
+            내려받을 수 있습니다.
           </p>
         </div>
         {previewId && (
@@ -111,7 +122,7 @@ export function CreateWorkbench({
             )}
           >
             <Download className="size-4" />
-            PNG 다운로드
+            이미지로 저장
           </a>
         )}
       </div>
@@ -120,8 +131,10 @@ export function CreateWorkbench({
         <div className="space-y-6">
           <Card className="border-border/80 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-base">입력</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-[15px] font-semibold tracking-tight">
+                상품 정보
+              </CardTitle>
+              <CardDescription className="text-[13px] leading-relaxed">
                 상품 설명은 필수입니다. 나머지는 선택 사항입니다.
               </CardDescription>
             </CardHeader>
@@ -197,7 +210,7 @@ export function CreateWorkbench({
                     id="sellingPoints"
                     name="sellingPoints"
                     rows={2}
-                    placeholder="USP, 인증, 성분, 배송 정책 등"
+                    placeholder="예: 국내산 원료, 당일 발송, 무첨가"
                     className="resize-none"
                   />
                 </div>
@@ -222,9 +235,9 @@ export function CreateWorkbench({
 
                 <div className="space-y-3">
                   <Label>이미지</Label>
-                  <p className="text-xs text-muted-foreground">
-                    여러 장 업로드 시 순서대로 히어로·섹션에 배치됩니다. 부족분은 AI
-                    생성 옵션으로 채울 수 있습니다.
+                  <p className="text-[12px] leading-relaxed text-muted-foreground">
+                    여러 장을 올리면 앞에서부터 메인 영역과 섹션에 순서대로
+                    배치됩니다.
                   </p>
                   <input
                     ref={fileInputRef}
@@ -272,11 +285,10 @@ export function CreateWorkbench({
                   />
                   <div>
                     <Label htmlFor="aiFillImages" className="cursor-pointer font-medium">
-                      AI가 이미지도 자동 생성
+                      비주얼 자동 보완
                     </Label>
-                    <p className="text-xs text-muted-foreground">
-                      업로드가 없거나 섹션에 이미지가 더 필요하면 프로바이더가 이미지를
-                      생성합니다. (mock: 플레이스홀더 이미지)
+                    <p className="text-[12px] leading-relaxed text-muted-foreground">
+                      업로드가 부족할 때 상품에 맞는 이미지로 빈 영역을 채웁니다.
                     </p>
                   </div>
                 </div>
@@ -290,7 +302,7 @@ export function CreateWorkbench({
                   ) : (
                     <>
                       <Sparkles className="size-4" />
-                      상세페이지 생성하기 (1 크레딧)
+                      상세페이지 만들기 · 1크레딧
                     </>
                   )}
                 </Button>
@@ -300,20 +312,26 @@ export function CreateWorkbench({
 
           <Card className="border-border/80 shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">크레딧 내역</CardTitle>
-              <CardDescription>최근 변동만 표시합니다.</CardDescription>
+              <CardTitle className="text-[15px] font-semibold tracking-tight">
+                크레딧 내역
+              </CardTitle>
+              <CardDescription className="text-[13px]">
+                최근 사용·충전 기록입니다.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               {creditLogs.length === 0 ? (
-                <p className="text-muted-foreground">아직 내역이 없습니다.</p>
+                <p className="text-[13px] text-muted-foreground">
+                  아직 기록이 없습니다.
+                </p>
               ) : (
                 creditLogs.map((l) => (
                   <div
                     key={l.id}
                     className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-background px-3 py-2"
                   >
-                    <span className="text-muted-foreground">
-                      {l.reason || l.type}
+                    <span className="text-[13px] text-muted-foreground">
+                      {creditLogLabel(l.reason, l.type)}
                     </span>
                     <Badge
                       variant={l.amount < 0 ? "destructive" : "secondary"}
@@ -331,9 +349,12 @@ export function CreateWorkbench({
         <div className="space-y-4">
           <Card className="overflow-hidden border-border/80 shadow-sm">
             <CardHeader className="border-b border-border/60 bg-card pb-4">
-              <CardTitle className="text-base">미리보기</CardTitle>
-              <CardDescription>
-                실제 PNG는 서버에서 동일 HTML을 렌더해 긴 세로 이미지로 저장합니다.
+              <CardTitle className="text-[15px] font-semibold tracking-tight">
+                미리보기
+              </CardTitle>
+              <CardDescription className="text-[13px] leading-relaxed">
+                완성된 레이아웃을 바로 확인하세요. 저장 시 긴 세로 이미지 한 장으로
+                받습니다.
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
@@ -346,8 +367,8 @@ export function CreateWorkbench({
               ) : (
                 <div className="flex h-[min(78vh,920px)] flex-col items-center justify-center gap-3 p-8 text-center text-muted-foreground">
                   <Sparkles className="size-10 opacity-40" />
-                  <p className="max-w-xs text-sm">
-                    폼을 작성한 뒤 생성하면 이곳에 상세페이지 레이아웃이 표시됩니다.
+                  <p className="max-w-xs text-[13px] leading-relaxed">
+                    정보를 입력하고 만들기를 누르면 이곳에 결과가 나타납니다.
                   </p>
                 </div>
               )}
@@ -356,11 +377,15 @@ export function CreateWorkbench({
 
           <Card className="border-border/80 shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">최근 생성</CardTitle>
+              <CardTitle className="text-[15px] font-semibold tracking-tight">
+                최근 작업
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {recentGenerations.length === 0 ? (
-                <p className="text-sm text-muted-foreground">기록이 없습니다.</p>
+                <p className="text-[13px] text-muted-foreground">
+                  아직 작업이 없습니다.
+                </p>
               ) : (
                 recentGenerations.map((g) => (
                   <button
