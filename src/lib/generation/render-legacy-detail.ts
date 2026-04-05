@@ -1,3 +1,4 @@
+import { pickCategoryStockUrl } from "@/lib/generation/category-stock";
 import type { GenerationPayloadV1, TemplateId } from "./types";
 
 const templateStyles: Record<
@@ -35,6 +36,13 @@ function escapeHtml(s: string) {
     .replace(/"/g, "&quot;");
 }
 
+function legacyDetailImg(url: string, seed: string): string {
+  const t = url.trim();
+  const safe = escapeHtml(t);
+  const fallback = escapeHtml(pickCategoryStockUrl("general", `legacy-fb|${seed}|${t}`));
+  return `<img src="${safe}" alt="" loading="lazy" decoding="async" data-df-fallback="${fallback}" onerror="this.onerror=null;if(this.dataset.dfFallback)this.src=this.dataset.dfFallback" />`;
+}
+
 export function renderLegacyDetailDocument(
   payload: GenerationPayloadV1,
   widthPx = 800,
@@ -43,8 +51,8 @@ export function renderLegacyDetailDocument(
   const sectionsHtml = payload.sections
     .map((s) => {
       if (s.kind === "hero") {
-        const img = s.imageUrl
-          ? `<div class="img-wrap hero-img"><img src="${escapeHtml(s.imageUrl)}" alt="" crossorigin="anonymous" /></div>`
+        const img = s.imageUrl?.trim()
+          ? `<div class="img-wrap hero-img">${legacyDetailImg(s.imageUrl, "hero")}</div>`
           : `<div class="img-placeholder hero-ph">상품 이미지</div>`;
         return `<section class="block hero">
           <p class="eyebrow">상품 상세</p>
@@ -54,8 +62,8 @@ export function renderLegacyDetailDocument(
         </section>`;
       }
       if (s.kind === "feature") {
-        const img = s.imageUrl
-          ? `<div class="img-wrap"><img src="${escapeHtml(s.imageUrl)}" alt="" crossorigin="anonymous" /></div>`
+        const img = s.imageUrl?.trim()
+          ? `<div class="img-wrap">${legacyDetailImg(s.imageUrl, "feature")}</div>`
           : `<div class="img-placeholder">이미지 영역</div>`;
         return `<section class="block feature">
           <h2>${escapeHtml(s.title)}</h2>

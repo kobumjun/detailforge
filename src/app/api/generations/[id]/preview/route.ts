@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { logImageSrcContext } from "@/lib/generation/image-url-utils";
 import type { GenerationPayload } from "@/lib/generation/types";
+import { isPayloadV2 } from "@/lib/generation/types";
 import { renderDetailDocument } from "@/lib/generation/render-html";
 
 export async function GET(
@@ -29,6 +31,22 @@ export async function GET(
   const payload = gen.output_json as GenerationPayload | null;
   if (!payload) {
     return NextResponse.json({ error: "No payload" }, { status: 400 });
+  }
+
+  if (process.env.DEBUG_PREVIEW_IMAGES === "1") {
+    if (isPayloadV2(payload)) {
+      payload.blocks.forEach((b, i) => {
+        if (b.type === "hero_shelf" || b.type === "fullbleed_visual") {
+          logImageSrcContext(`preview:v2:${i}:${b.type}`, b.imageUrl);
+        }
+      });
+    } else {
+      payload.sections.forEach((s, i) => {
+        if (s.kind === "hero" || s.kind === "feature") {
+          logImageSrcContext(`preview:v1:${i}:${s.kind}`, s.imageUrl);
+        }
+      });
+    }
   }
 
   const html = renderDetailDocument(payload);

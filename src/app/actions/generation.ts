@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { buildGenerationPayload } from "@/lib/generation/build-sections";
+import { stabilizeGenerationPayloadImages } from "@/lib/generation/persist-remote-images";
 import type { GenerationOptions } from "@/lib/generation/types";
 import type { DetailLength, ToneOption } from "@/lib/providers/text-gen/types";
 import type { TemplateId } from "@/lib/generation/types";
@@ -125,6 +126,22 @@ export async function generateDetailAction(
 
     if (insErr || !row) {
       throw new Error("결과를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    }
+
+    const stabilized = await stabilizeGenerationPayloadImages(
+      payload,
+      user.id,
+      row.id,
+    );
+    const { error: stabilizeSaveErr } = await supabase
+      .from("generations")
+      .update({ output_json: stabilized })
+      .eq("id", row.id);
+    if (stabilizeSaveErr) {
+      console.error(
+        "[generation] stabilized payload save failed",
+        stabilizeSaveErr,
+      );
     }
 
     revalidatePath("/create");

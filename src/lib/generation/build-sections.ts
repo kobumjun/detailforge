@@ -1,5 +1,6 @@
 import { voiceFor } from "@/lib/generation/commerce-voice";
 import { pickCategoryStockUrl } from "@/lib/generation/category-stock";
+import { normalizedImageUrl } from "@/lib/generation/image-url-utils";
 import { buildCommerceImagePrompt } from "@/lib/generation/image-prompts";
 import { inferVisualCategory } from "@/lib/generation/visual-category";
 import { getImageGenProvider } from "@/lib/providers/image-gen";
@@ -41,7 +42,11 @@ async function generateProductImage(
   };
 
   try {
-    return await image.generate(input);
+    const raw = await image.generate(input);
+    return normalizedImageUrl(raw) ?? pickCategoryStockUrl(
+      args.category.key,
+      `${prompt}|${args.slotRole}|fallback`,
+    );
   } catch {
     return pickCategoryStockUrl(
       args.category.key,
@@ -83,7 +88,7 @@ export async function buildGenerationPayload(
     return u;
   };
 
-  let heroImg = nextUserUrl();
+  let heroImg = normalizedImageUrl(nextUserUrl());
   if (!heroImg && options.aiFillImages) {
     heroImg = await generateProductImage(image, {
       slotRole: "hero",
@@ -93,7 +98,7 @@ export async function buildGenerationPayload(
     });
   }
 
-  let fullbleedImg = nextUserUrl();
+  let fullbleedImg = normalizedImageUrl(nextUserUrl());
   if (!fullbleedImg && options.aiFillImages) {
     fullbleedImg = await generateProductImage(image, {
       slotRole: "lifestyle_scene",
@@ -106,7 +111,7 @@ export async function buildGenerationPayload(
 
   let packageImg: string | undefined;
   if (options.length === "long" && options.aiFillImages) {
-    packageImg = nextUserUrl();
+    packageImg = normalizedImageUrl(nextUserUrl());
     if (!packageImg) {
       packageImg = await generateProductImage(image, {
         slotRole: "package_shot",

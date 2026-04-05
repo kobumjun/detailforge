@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { logImageSrcContext } from "@/lib/generation/image-url-utils";
 import type { ImageGenInput, ImageGenProvider } from "./types";
 
 export class OpenAIImageGenProvider implements ImageGenProvider {
@@ -27,8 +28,28 @@ export class OpenAIImageGenProvider implements ImageGenProvider {
       n: 1,
     });
 
-    const url = res.data?.[0]?.url;
-    if (!url) throw new Error("No image URL from OpenAI");
-    return url;
+    const first = res.data?.[0];
+    const url = first?.url ?? undefined;
+    const b64 = first?.b64_json ?? undefined;
+
+    if (typeof url === "string" && url.length > 0) {
+      logImageSrcContext("provider:openai:url", url);
+      return url;
+    }
+    if (typeof b64 === "string" && b64.length > 0) {
+      console.info("[generation:image-src] provider:openai", {
+        ok: true,
+        kind: "b64_json",
+        model,
+      });
+      return `data:image/png;base64,${b64}`;
+    }
+
+    console.warn("[generation:image-src] provider:openai", {
+      ok: false,
+      reason: "no_url_or_b64",
+      dataLength: res.data?.length ?? 0,
+    });
+    throw new Error("No image URL or b64_json from OpenAI");
   }
 }

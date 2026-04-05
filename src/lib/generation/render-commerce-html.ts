@@ -1,3 +1,4 @@
+import { pickCategoryStockUrl } from "@/lib/generation/category-stock";
 import type { VisualCategoryKey } from "@/lib/generation/visual-category";
 import type { CommerceBlock, GenerationPayloadV2, TemplateId } from "./types";
 import { voiceFor } from "./commerce-voice";
@@ -54,6 +55,32 @@ function escapeHtml(s: string) {
     .replace(/"/g, "&quot;");
 }
 
+/** 로드 실패 시 data-df-fallback(카테고리 스톡)으로 교체 */
+function commerceDetailImg(
+  url: string,
+  categoryKey: VisualCategoryKey,
+  wrapperClass: string,
+): string {
+  const t = url.trim();
+  const safe = escapeHtml(t);
+  const fallback = escapeHtml(
+    pickCategoryStockUrl(categoryKey, `img-fallback|${t}`),
+  );
+  return `<div class="${wrapperClass}"><img src="${safe}" alt="" loading="lazy" decoding="async" data-df-fallback="${fallback}" onerror="this.onerror=null;if(this.dataset.dfFallback)this.src=this.dataset.dfFallback" /></div>`;
+}
+
+function commerceDetailImgBare(
+  url: string,
+  categoryKey: VisualCategoryKey,
+): string {
+  const t = url.trim();
+  const safe = escapeHtml(t);
+  const fallback = escapeHtml(
+    pickCategoryStockUrl(categoryKey, `img-fallback-bare|${t}`),
+  );
+  return `<img src="${safe}" alt="" loading="lazy" decoding="async" data-df-fallback="${fallback}" onerror="this.onerror=null;if(this.dataset.dfFallback)this.src=this.dataset.dfFallback" />`;
+}
+
 function hintTweakAccent(hint: string | undefined, fallback: string) {
   if (!hint) return fallback;
   const h = hint.toLowerCase();
@@ -97,6 +124,7 @@ function renderBlock(
   b: CommerceBlock,
   _template: TemplateId,
   voice: ReturnType<typeof voiceFor>,
+  categoryKey: VisualCategoryKey,
 ): string {
   switch (b.type) {
     case "hero_shelf": {
@@ -106,9 +134,10 @@ function renderBlock(
             `<span class="df-badge">${escapeHtml(x)}</span>`,
         )
         .join("");
-      const img = b.imageUrl
-        ? `<div class="df-hero-img"><img src="${escapeHtml(b.imageUrl)}" alt="" crossorigin="anonymous" /></div>`
-        : `<div class="df-ph df-hero-ph">히어로 이미지</div>`;
+      const img =
+        b.imageUrl?.trim()
+          ? commerceDetailImg(b.imageUrl, categoryKey, "df-hero-img")
+          : `<div class="df-ph df-hero-ph">히어로 이미지</div>`;
       return `<section class="df-sec df-hero">
         <p class="df-eyebrow">오늘의 픽</p>
         <div class="df-badge-row">${badges}</div>
@@ -152,8 +181,8 @@ function renderBlock(
       return `<section class="df-sec"><h2 class="df-sectitle df-center">핵심 포인트</h2><p class="df-body df-center df-mb">한눈에 보는 구성과 장점입니다.</p><div class="${cls}">${cards}</div></section>`;
     }
     case "fullbleed_visual": {
-      const inner = b.imageUrl
-        ? `<img src="${escapeHtml(b.imageUrl)}" alt="" crossorigin="anonymous" />`
+      const inner = b.imageUrl?.trim()
+        ? commerceDetailImgBare(b.imageUrl, categoryKey)
         : `<div class="df-ph df-fb-ph">상세 비주얼</div>`;
       return `<section class="df-sec df-sec-tight">
         ${b.label ? `<p class="df-cap df-pad">${escapeHtml(b.label)}</p>` : ""}
@@ -248,7 +277,9 @@ export function renderCommerceDetailDocument(
     payload.options.colorHint,
   );
   const blocksHtml = payload.blocks
-    .map((b) => renderBlock(b, payload.options.template, voice))
+    .map((b) =>
+      renderBlock(b, payload.options.template, voice, payload.categoryKey),
+    )
     .join("\n");
 
   const tplClass = `df-tpl-${payload.options.template}`;
