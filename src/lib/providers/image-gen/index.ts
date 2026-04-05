@@ -7,10 +7,9 @@ import type { ImageGenProvider } from "./types";
 export type * from "./types";
 
 export function getImageGenProvider(): ImageGenProvider {
-  if (imageGenProvider() === "openai" && process.env.OPENAI_API_KEY) {
-    return new OpenAIImageGenProvider(
-      new OpenAI({ apiKey: process.env.OPENAI_API_KEY }),
-    );
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (imageGenProvider() === "openai" && apiKey) {
+    return new OpenAIImageGenProvider(new OpenAI({ apiKey }));
   }
   return new MockImageGenProvider();
 }

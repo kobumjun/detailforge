@@ -159,12 +159,22 @@ const RULES: Rule[] = [
       "electronics",
       "laptop",
       "phone",
+      "마우스",
+      "키보드",
+      "게이밍",
+      "게임용",
+      "gaming",
+      "mouse",
+      "keyboard",
+      "headset",
+      "웹캠",
+      "스피커",
     ],
     profile: {
       key: "tech",
       labelKo: "테크",
       imagePromptPrefix:
-        "Consumer electronics product photography: device on desk, detail of ports or screen, minimal studio. No nature backgrounds.",
+        "Consumer electronics and PC peripherals only: mouse, keyboard, headset, monitor, or phone on desk; product detail shots. Never beauty salon, food, or unrelated props.",
     },
   },
   {

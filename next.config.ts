@@ -9,8 +9,15 @@ const nextConfig: NextConfig = {
         hostname: "oaidalleapiprodscus.blob.core.windows.net",
         pathname: "/**",
       },
+      { protocol: "https", hostname: "images.unsplash.com", pathname: "/**" },
     ],
   },
+  serverExternalPackages: [
+    "@sparticuz/chromium",
+    "puppeteer-core",
+    "playwright-core",
+    "playwright",
+  ],
 };
 
 export default nextConfig;

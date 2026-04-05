@@ -4,14 +4,15 @@ export type ImageSlotRole =
   | "hero"
   | "texture_detail"
   | "usage_context"
-  | "feature_support";
+  | "feature_support"
+  | "package_shot"
+  | "lifestyle_scene"
+  | "detail_macro";
 
 export interface ImageGenInput {
   prompt: string;
   aspect?: "square" | "landscape" | "portrait";
-  /** Layout slot — drives prompt structure in commerce pipeline */
   slotRole?: ImageSlotRole;
-  /** Inferred vertical — mock stock + prompt grounding */
   categoryKey?: VisualCategoryKey;
 }
 

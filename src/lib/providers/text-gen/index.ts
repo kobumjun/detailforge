@@ -7,10 +7,9 @@ import type { TextGenProvider } from "./types";
 export type * from "./types";
 
 export function getTextGenProvider(): TextGenProvider {
-  if (textGenProvider() === "openai" && process.env.OPENAI_API_KEY) {
-    return new OpenAITextGenProvider(
-      new OpenAI({ apiKey: process.env.OPENAI_API_KEY }),
-    );
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (textGenProvider() === "openai" && apiKey) {
+    return new OpenAITextGenProvider(new OpenAI({ apiKey }));
   }
   return new MockTextGenProvider();
 }

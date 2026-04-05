@@ -51,8 +51,9 @@ npm run dev
 
 ## PNG 익스포트
 
-- **로컬**: `playwright` 패키지( devDependency )로 Chromium 실행.
-- **Vercel**: `VERCEL` 환경이 잡히면 `@sparticuz/chromium` + `playwright-core` 경로를 사용합니다. 함수 `maxDuration` 은 `src/app/api/generations/[id]/export/route.ts` 에 60초로 두었습니다(플랜에 따라 조정).
+- **로컬**: `playwright`로 Chromium 실행(`npx playwright install chromium`).
+- **Vercel**: `puppeteer-core` + `@sparticuz/chromium`이 **원격 Chromium 팩 tar URL**에서 바이너리를 풀어 실행합니다(패키지에 `bin`이 없어 기본 `executablePath()`만 쓰면 brotli 오류가 납니다). 선택 환경변수 `CHROMIUM_PACK_URL`(미설정 시 x64 기본 GitHub 릴리스 URL). ARM 러너면 해당 아키텍처용 tar로 교체하세요.
+- `export` 라우트 `maxDuration`은 120초(플랜 상한에 맞게 조정).
 
 ## 배포 전 체크리스트
 
@@ -60,7 +61,7 @@ npm run dev
 - [ ] Auth URL / Redirect URLs에 배포 도메인과 `/auth/callback` 등록
 - [ ] Vercel 환경 변수에 `NEXT_PUBLIC_*`, `SUPABASE_SERVICE_ROLE_KEY`, `APP_URL` 설정
 - [ ] 크레딧 RPC(`consume_credit`, `refund_credit`) 동작 확인
-- [ ] 프로덕션에서 PNG 다운로드 한 번 실행(콜드 스타트·타임아웃 확인)
+- [ ] 프로덕션에서 PNG 다운로드 한 번 실행(콜드 스타트·Chromium 팩 다운로드·타임아웃 확인)
 - [ ] 결제 연동 시 `PAYMENT_PROVIDER`, LemonSqueezy 관련 키 및 웹훅에서 크레딧 지급 구현
 
 ## 프로젝트 구조 (요약)

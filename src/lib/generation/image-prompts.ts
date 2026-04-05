@@ -3,13 +3,19 @@ import type { VisualCategoryProfile } from "./visual-category";
 
 const SLOT_GUIDE: Record<ImageSlotRole, string> = {
   hero:
-    "Wide ecommerce hero: flagship product or neatly arranged set, centered composition, soft studio gradient or seamless backdrop, premium catalog cover.",
+    "Wide ecommerce hero: flagship product centered, premium catalog cover, soft studio gradient backdrop.",
   texture_detail:
-    "Macro or tight crop: packaging detail, ingredient texture, fabric weave, material finish, or product surface — must relate to the same product category.",
+    "Macro close-up of material, surface, packaging detail, or ingredient texture — same product category only.",
   usage_context:
-    "Lifestyle-in-context: believable everyday scene where this product category would appear; props stay in the same vertical.",
+    "Lifestyle scene where this exact product category is used; props must match the vertical (no salon/salad for PC peripherals).",
   feature_support:
-    "Supporting still life that visually backs the selling point; secondary props only from the same product world.",
+    "Supporting still life reinforcing a selling claim; only category-consistent props.",
+  package_shot:
+    "Retail box, bundle, or kit flatlay showing package design and contents silhouette for the described product only.",
+  lifestyle_scene:
+    "Authentic desk/gym/kitchen/bathroom context matching the product category; hero product clearly visible.",
+  detail_macro:
+    "Tight product detail: ports, buttons, label, texture zoom — must be the same merchandise category.",
 };
 
 export function buildCommerceImagePrompt(opts: {
@@ -28,16 +34,16 @@ export function buildCommerceImagePrompt(opts: {
   const body = opts.sectionBody?.trim().slice(0, 140);
 
   const parts = [
-    "Commercial product photography for an online store detail page.",
+    "Strict ecommerce product photography. The subject MUST match the described product type.",
     opts.category.imagePromptPrefix,
     SLOT_GUIDE[opts.slotRole],
-    `Primary merchandise (keep subject aligned): "${product}".`,
-    target ? `Intended buyer: ${target}.` : "",
-    points ? `Brand claims to reflect visually: ${points}.` : "",
-    sec ? `Section headline: ${sec}.` : "",
-    body ? `Supporting copy cue: ${body}.` : "",
-    "Do not depict oceans, forests, deserts, mountains, sky-only, or generic travel scenery unrelated to the product.",
-    "Photorealistic lighting, sharp focus, high-end retail aesthetic.",
+    `Merchandise: "${product}".`,
+    target ? `Buyer: ${target}.` : "",
+    points ? `Claims: ${points}.` : "",
+    sec ? `Section: ${sec}.` : "",
+    body ? `Context: ${body}.` : "",
+    "Forbidden: unrelated salons, random food, generic sale banners, stock photos of wrong industries, oceans/forests as main subject.",
+    "Photorealistic, commercial lighting, sharp focus.",
   ];
 
   return parts.filter(Boolean).join(" ");

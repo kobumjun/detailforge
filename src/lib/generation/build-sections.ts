@@ -1,3 +1,4 @@
+import { voiceFor } from "@/lib/generation/commerce-voice";
 import { pickCategoryStockUrl } from "@/lib/generation/category-stock";
 import { buildCommerceImagePrompt } from "@/lib/generation/image-prompts";
 import { inferVisualCategory } from "@/lib/generation/visual-category";
@@ -5,16 +6,11 @@ import { getImageGenProvider } from "@/lib/providers/image-gen";
 import { getTextGenProvider } from "@/lib/providers/text-gen";
 import type { ImageSlotRole } from "@/lib/providers/image-gen/types";
 import type {
-  DetailSection,
+  CommerceBlock,
   GenerationOptions,
   GenerationPayload,
+  GenerationPayloadV2,
 } from "./types";
-
-const FEATURE_ROLES: ImageSlotRole[] = [
-  "texture_detail",
-  "usage_context",
-  "feature_support",
-];
 
 async function generateProductImage(
   image: ReturnType<typeof getImageGenProvider>,
@@ -73,7 +69,10 @@ export async function buildGenerationPayload(
     colorHint: options.colorHint,
     sellingPoints: options.sellingPoints,
     length: options.length,
+    categoryKey: category.key,
   });
+
+  const voice = voiceFor(category.key);
 
   const queue = [...options.userImageUrls];
   let userIdx = 0;
@@ -94,53 +93,154 @@ export async function buildGenerationPayload(
     });
   }
 
-  const sections: DetailSection[] = [
-    {
-      kind: "hero",
-      headline: copy.headline,
-      subcopy: copy.subcopy,
-      imageUrl: heroImg,
-    },
-  ];
-
-  for (let i = 0; i < copy.benefits.length; i++) {
-    const b = copy.benefits[i];
-    let img = nextUserUrl();
-    if (!img && options.aiFillImages) {
-      const slotRole = FEATURE_ROLES[i % FEATURE_ROLES.length]!;
-      img = await generateProductImage(image, {
-        slotRole,
-        aspect: "portrait",
-        options,
-        category,
-        sectionTitle: b.title,
-        sectionBody: b.body,
-      });
-    }
-    sections.push({
-      kind: "feature",
-      title: b.title,
-      body: b.body,
-      imageUrl: img,
+  let fullbleedImg = nextUserUrl();
+  if (!fullbleedImg && options.aiFillImages) {
+    fullbleedImg = await generateProductImage(image, {
+      slotRole: "lifestyle_scene",
+      aspect: "landscape",
+      options,
+      category,
+      sectionTitle: "상세 비주얼",
     });
   }
 
-  sections.push(
-    {
-      kind: "scenario",
-      title: copy.scenarioTitle,
-      body: copy.scenarioBody,
-    },
-    {
-      kind: "cta",
-      title: copy.ctaTitle,
-      body: copy.ctaBody,
-    },
-  );
+  let packageImg: string | undefined;
+  if (options.length === "long" && options.aiFillImages) {
+    packageImg = nextUserUrl();
+    if (!packageImg) {
+      packageImg = await generateProductImage(image, {
+        slotRole: "package_shot",
+        aspect: "square",
+        options,
+        category,
+        sectionTitle: "구성 안내",
+      });
+    }
+  }
 
-  return {
+  const blocks: CommerceBlock[] = [];
+
+  blocks.push({
+    type: "hero_shelf",
+    badges: copy.badges,
+    headline: copy.headline,
+    subcopy: copy.subcopy,
+    imageUrl: heroImg,
+  });
+
+  blocks.push({
+    type: "trust_strip",
+    items: voice.trustStrip.map((t) => ({ title: t.title, sub: t.sub })),
+  });
+
+  blocks.push({
+    type: "pain_panel",
+    eyebrow: voice.painEyebrow,
+    title: voice.painTitle,
+    body: copy.painBody,
+    tag: "POINT",
+  });
+
+  const fCols =
+    options.length === "long" && copy.benefits.length >= 3 ? 3 : 2;
+  blocks.push({
+    type: "feature_grid",
+    columns: fCols,
+    items: copy.benefits.map((b, i) => ({
+      n: String(i + 1),
+      title: b.title,
+      body: b.body,
+    })),
+  });
+
+  blocks.push({
+    type: "fullbleed_visual",
+    label: "상세 이미지",
+    imageUrl: fullbleedImg,
+  });
+
+  if (options.length !== "short") {
+    blocks.push({ type: "stats_band", stats: copy.stats });
+  }
+
+  blocks.push({
+    type: "checklist_icons",
+    title: "구성 & 체크리스트",
+    items: copy.checklist,
+  });
+
+  if (options.length !== "short") {
+    blocks.push({
+      type: "compare_table",
+      title: "비교 한눈에",
+      rows: copy.comparison.map((r) => ({
+        label: r.label,
+        ours: r.ours,
+        typical: r.typical,
+      })),
+    });
+  }
+
+  blocks.push({
+    type: "scenario_split",
+    eyebrow: "활용 가이드",
+    title: copy.scenarioTitle,
+    body: copy.scenarioBody,
+    aside: copy.scenarioAside,
+  });
+
+  blocks.push({
+    type: "recommend_banner",
+    title: voice.recommendTitle,
+    body: copy.recommendBody,
+  });
+
+  if (options.length !== "short") {
+    blocks.push({
+      type: "quote_review",
+      quote: copy.quoteText,
+      author: copy.quoteFrom,
+    });
+  }
+
+  const compItems = packageImg
+    ? [...copy.compositionItems, "패키지 구성 참고 이미지 포함"]
+    : [...copy.compositionItems];
+
+  blocks.push({
+    type: "composition_cards",
+    title: "구성 안내",
+    items: compItems,
+  });
+
+  if (options.length === "long" && packageImg) {
+    blocks.push({
+      type: "fullbleed_visual",
+      label: "패키지 & 구성",
+      imageUrl: packageImg,
+    });
+  }
+
+  blocks.push({
+    type: "notice_box",
+    title: voice.noticeTitle,
+    lines: copy.noticeLines,
+  });
+
+  blocks.push({
+    type: "cta_band",
+    title: copy.ctaTitle,
+    body: copy.ctaBody,
+    buttonLabel: "바로 구매하기",
+  });
+
+  const v2: GenerationPayloadV2 = {
+    version: 2,
     options,
-    sections,
+    categoryKey: category.key,
+    blocks,
     createdAt: new Date().toISOString(),
   };
+
+  return v2;
 }

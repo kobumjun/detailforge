@@ -15,7 +15,6 @@ import {
   type GenerateState,
 } from "@/app/actions/generation";
 import { Button } from "@/components/ui/button";
-import { buttonVariants } from "@/lib/button-variants";
 import {
   Card,
   CardContent,
@@ -66,6 +65,10 @@ export function CreateWorkbench({
   const previewId = searchParams.get("g");
   const [previews, setPreviews] = useState<{ file: File; url: string }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [exportingPng, setExportingPng] = useState(false);
+
+  const EXPORT_FAIL_MSG =
+    "이미지 생성 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.";
 
   const [state, formAction, pending] = useActionState<
     GenerateState | undefined,
@@ -85,6 +88,44 @@ export function CreateWorkbench({
       toast.error(state.message);
     }
   }, [state, router]);
+
+  async function handleExportPng() {
+    if (!previewId || exportingPng) return;
+    setExportingPng(true);
+    try {
+      const res = await fetch(`/api/generations/${previewId}/export`, {
+        method: "POST",
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        url?: string;
+        message?: string;
+      };
+      if (!data?.ok || !data.url) {
+        toast.error(data?.message || EXPORT_FAIL_MSG);
+        return;
+      }
+      const imgRes = await fetch(data.url);
+      if (!imgRes.ok) {
+        toast.error(EXPORT_FAIL_MSG);
+        return;
+      }
+      const blob = await imgRes.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = `detail-${previewId}.png`;
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      toast.error(EXPORT_FAIL_MSG);
+    } finally {
+      setExportingPng(false);
+    }
+  }
 
   function onFiles(files: FileList | null) {
     if (!files?.length) return;
@@ -112,18 +153,26 @@ export function CreateWorkbench({
           </p>
         </div>
         {previewId && (
-          <a
-            href={`/api/generations/${previewId}/export`}
-            target="_blank"
-            rel="noreferrer"
-            className={cn(
-              buttonVariants({ variant: "secondary", size: "sm" }),
-              "inline-flex items-center gap-2",
-            )}
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="gap-2"
+            disabled={exportingPng}
+            onClick={() => void handleExportPng()}
           >
-            <Download className="size-4" />
-            이미지로 저장
-          </a>
+            {exportingPng ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                이미지 준비 중…
+              </>
+            ) : (
+              <>
+                <Download className="size-4" />
+                이미지로 저장
+              </>
+            )}
+          </Button>
         )}
       </div>
 

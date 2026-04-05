@@ -2,39 +2,27 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { GenerationPayload } from "@/lib/generation/types";
+import { isPayloadV2 } from "@/lib/generation/types";
 import { renderDetailPageToPng } from "@/lib/generation/png-export";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+/** Chromium 팩 최초 다운로드 + 풀페이지 캡처까지 여유 (Vercel Pro 등에서 상향) */
+export const maxDuration = 120;
 
-export async function GET(
-  _request: Request,
-  context: { params: Promise<{ id: string }> },
-) {
-  const { id } = await context.params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+const USER_EXPORT_FAIL =
+  "이미지 생성 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.";
 
-  const { data: gen, error } = await supabase
-    .from("generations")
-    .select("id, user_id, output_json, output_url")
-    .eq("id", id)
-    .single();
+function hasRenderablePayload(p: GenerationPayload | null): boolean {
+  if (!p) return false;
+  if (isPayloadV2(p)) return p.blocks.length > 0;
+  return Array.isArray(p.sections) && p.sections.length > 0;
+}
 
-  if (error || !gen || gen.user_id !== user.id) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
-  const payload = gen.output_json as GenerationPayload | null;
-  if (!payload?.sections?.length) {
-    return NextResponse.json({ error: "No payload" }, { status: 400 });
-  }
-
+async function handleExport(
+  id: string,
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  user: { id: string },
+): Promise<Response> {
   const admin = createServiceClient();
 
   async function signPath(path: string) {
@@ -47,6 +35,27 @@ export async function GET(
     return data.signedUrl;
   }
 
+  const { data: gen, error } = await supabase
+    .from("generations")
+    .select("id, user_id, output_json, output_url")
+    .eq("id", id)
+    .single();
+
+  if (error || !gen || gen.user_id !== user.id) {
+    return NextResponse.json(
+      { ok: false, message: USER_EXPORT_FAIL },
+      { status: 404 },
+    );
+  }
+
+  const payload = gen.output_json as GenerationPayload | null;
+  if (!hasRenderablePayload(payload)) {
+    return NextResponse.json(
+      { ok: false, message: USER_EXPORT_FAIL },
+      { status: 400 },
+    );
+  }
+
   const storedPath =
     typeof gen.output_url === "string" && gen.output_url.length > 0
       ? gen.output_url
@@ -55,18 +64,18 @@ export async function GET(
   if (storedPath && !storedPath.startsWith("http")) {
     try {
       const signed = await signPath(storedPath);
-      return NextResponse.redirect(signed);
+      return NextResponse.json({ ok: true, url: signed });
     } catch {
-      /* re-export if missing */
+      /* regenerate */
     }
   }
 
   let png: Buffer;
   try {
-    png = await renderDetailPageToPng(payload);
+    png = await renderDetailPageToPng(payload!);
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "render failed";
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error("[export-png] render", e);
+    return NextResponse.json({ ok: false, message: USER_EXPORT_FAIL }, { status: 200 });
   }
 
   const path = `${user.id}/${gen.id}.png`;
@@ -76,16 +85,54 @@ export async function GET(
   });
 
   if (upErr) {
-    return NextResponse.json({ error: upErr.message }, { status: 500 });
+    console.error("[export-png] upload", upErr);
+    return NextResponse.json({ ok: false, message: USER_EXPORT_FAIL }, { status: 200 });
   }
 
   await supabase.from("generations").update({ output_url: path }).eq("id", id);
 
   try {
     const signed = await signPath(path);
-    return NextResponse.redirect(signed);
+    return NextResponse.json({ ok: true, url: signed });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "sign failed";
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error("[export-png] sign", e);
+    return NextResponse.json({ ok: false, message: USER_EXPORT_FAIL }, { status: 200 });
   }
+}
+
+export async function POST(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const { id } = await context.params;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json(
+      { ok: false, message: USER_EXPORT_FAIL },
+      { status: 401 },
+    );
+  }
+  return handleExport(id, supabase, user);
+}
+
+/** 캐시된 파일이 있으면 JSON으로 signed URL 반환 (구 링크 호환) */
+export async function GET(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const { id } = await context.params;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json(
+      { ok: false, message: USER_EXPORT_FAIL },
+      { status: 401 },
+    );
+  }
+  return handleExport(id, supabase, user);
 }

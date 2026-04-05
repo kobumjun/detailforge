@@ -8,10 +8,10 @@ export const appUrl = () =>
   process.env.APP_URL?.replace(/\/$/, "") || "http://localhost:3000";
 
 export const textGenProvider = () =>
-  (process.env.TEXT_GEN_PROVIDER || "mock").toLowerCase();
+  (process.env.TEXT_GEN_PROVIDER?.trim() || "mock").toLowerCase();
 
 export const imageGenProvider = () =>
-  (process.env.IMAGE_GEN_PROVIDER || "mock").toLowerCase();
+  (process.env.IMAGE_GEN_PROVIDER?.trim() || "mock").toLowerCase();
 
 export const paymentProvider = () =>
   (process.env.PAYMENT_PROVIDER || "mock").toLowerCase();
