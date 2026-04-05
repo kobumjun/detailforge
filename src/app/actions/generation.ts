@@ -4,9 +4,13 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { buildGenerationPayload } from "@/lib/generation/build-sections";
 import { stabilizeGenerationPayloadImages } from "@/lib/generation/persist-remote-images";
-import type { GenerationOptions } from "@/lib/generation/types";
+import { renderDetailDocument } from "@/lib/generation/render-html";
+import type {
+  GenerationOptions,
+  GenerationPayload,
+  TemplateId,
+} from "@/lib/generation/types";
 import type { DetailLength, ToneOption } from "@/lib/providers/text-gen/types";
-import type { TemplateId } from "@/lib/generation/types";
 
 function sanitizeName(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120);
@@ -47,7 +51,7 @@ async function uploadUserImages(
 }
 
 export type GenerateState =
-  | { ok: true; generationId: string }
+  | { ok: true; payload: GenerationPayload; html: string }
   | { ok: false; message: string };
 
 export async function generateDetailAction(
@@ -78,6 +82,11 @@ export async function generateDetailAction(
   const { data: rpcData, error: rpcErr } = await supabase.rpc("consume_credit", {
     p_amount: 1,
     p_reason: "generation",
+    p_metadata: {
+      product_description: productDescription.slice(0, 400),
+      template,
+      length,
+    },
   });
 
   if (rpcErr) {
@@ -112,40 +121,16 @@ export async function generateDetailAction(
     };
 
     const payload = await buildGenerationPayload(options);
-
-    const { data: row, error: insErr } = await supabase
-      .from("generations")
-      .insert({
-        user_id: user.id,
-        product_description: productDescription,
-        options,
-        output_json: payload,
-      })
-      .select("id")
-      .single();
-
-    if (insErr || !row) {
-      throw new Error("결과를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
-    }
-
+    const volatileSessionKey = crypto.randomUUID();
     const stabilized = await stabilizeGenerationPayloadImages(
       payload,
       user.id,
-      row.id,
+      volatileSessionKey,
     );
-    const { error: stabilizeSaveErr } = await supabase
-      .from("generations")
-      .update({ output_json: stabilized })
-      .eq("id", row.id);
-    if (stabilizeSaveErr) {
-      console.error(
-        "[generation] stabilized payload save failed",
-        stabilizeSaveErr,
-      );
-    }
+    const html = renderDetailDocument(stabilized);
 
     revalidatePath("/create");
-    return { ok: true, generationId: row.id };
+    return { ok: true, payload: stabilized, html };
   } catch (e) {
     await supabase.rpc("refund_credit", {
       p_amount: 1,

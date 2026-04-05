@@ -57,7 +57,7 @@ async function uploadAndSignUrl(args: {
 
   const { buffer, contentType } = await fetchImageBytes(sourceUrl);
   const ext = extFromContentType(contentType);
-  const objectPath = `${userId}/generations/${generationId}/${slotKey}.${ext}`;
+  const objectPath = `${userId}/volatile/${generationId}/${slotKey}.${ext}`;
 
   const { error: upErr } = await admin.storage.from("uploads").upload(objectPath, buffer, {
     contentType,
@@ -205,12 +205,13 @@ async function stabilizeLegacySections(args: {
 
 /**
  * 만료되기 쉬운 URL(OpenAI blob, 짧은 Supabase 서명 URL 등)을
- * uploads/{userId}/generations/{id}/ 로 복사한 뒤 긴 TTL 서명 URL로 교체.
+ * uploads/{userId}/volatile/{sessionKey}/ 로 복사한 뒤 긴 TTL 서명 URL로 교체.
+ * sessionKey는 DB 행과 무관한 일회용 키(클라이언트 세션 수준).
  */
 export async function stabilizeGenerationPayloadImages(
   payload: GenerationPayload,
   userId: string,
-  generationId: string,
+  volatileSessionKey: string,
 ): Promise<GenerationPayload> {
   let admin: ReturnType<typeof createServiceClient>;
   try {
@@ -228,7 +229,7 @@ export async function stabilizeGenerationPayloadImages(
       await stabilizeBlockImages({
         blocks: out.blocks,
         userId,
-        generationId,
+        generationId: volatileSessionKey,
         categoryKey: out.categoryKey,
         admin,
         urlCache,
@@ -237,7 +238,7 @@ export async function stabilizeGenerationPayloadImages(
       await stabilizeLegacySections({
         payload: out,
         userId,
-        generationId,
+        generationId: volatileSessionKey,
         admin,
         urlCache,
       });

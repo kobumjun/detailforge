@@ -9,27 +9,14 @@ async function CreateInner() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const [{ data: creditLogs }, { data: recentGenerations }] = await Promise.all([
-    supabase
-      .from("credit_logs")
-      .select("id, amount, type, reason, created_at")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(12),
-    supabase
-      .from("generations")
-      .select("id, product_description, created_at")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(12),
-  ]);
+  const { data: creditLogs } = await supabase
+    .from("credit_logs")
+    .select("id, amount, type, reason, created_at")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(12);
 
-  return (
-    <CreateWorkbench
-      creditLogs={creditLogs ?? []}
-      recentGenerations={recentGenerations ?? []}
-    />
-  );
+  return <CreateWorkbench creditLogs={creditLogs ?? []} />;
 }
 
 export default function CreatePage() {

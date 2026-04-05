@@ -7,13 +7,13 @@ import {
   useRef,
   useState,
 } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Download, Loader2, Sparkles, Upload } from "lucide-react";
 import {
   generateDetailAction,
   type GenerateState,
 } from "@/app/actions/generation";
+import type { GenerationPayload } from "@/lib/generation/types";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -37,12 +37,6 @@ type CreditLogRow = {
   created_at: string;
 };
 
-type GenRow = {
-  id: string;
-  product_description: string;
-  created_at: string;
-};
-
 function creditLogLabel(reason: string | null, type: string) {
   if (reason === "signup_bonus") return "가입 축하 크레딧";
   if (reason === "generation") return "상세페이지 생성";
@@ -53,19 +47,15 @@ function creditLogLabel(reason: string | null, type: string) {
   return type;
 }
 
-export function CreateWorkbench({
-  creditLogs,
-  recentGenerations,
-}: {
-  creditLogs: CreditLogRow[];
-  recentGenerations: GenRow[];
-}) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const previewId = searchParams.get("g");
+export function CreateWorkbench({ creditLogs }: { creditLogs: CreditLogRow[] }) {
   const [previews, setPreviews] = useState<{ file: File; url: string }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [exportingPng, setExportingPng] = useState(false);
+  const [sessionPreview, setSessionPreview] = useState<{
+    html: string;
+    payload: GenerationPayload;
+  } | null>(null);
+  const [previewKey, setPreviewKey] = useState(0);
 
   const EXPORT_FAIL_MSG =
     "이미지 생성 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.";
@@ -78,8 +68,9 @@ export function CreateWorkbench({
   useEffect(() => {
     if (!state) return;
     if (state.ok) {
-      toast.success("새 상세페이지가 준비되었습니다.");
-      router.replace(`/create?g=${state.generationId}`);
+      toast.success("상세페이지가 준비되었습니다. 새로고침하면 사라집니다.");
+      setSessionPreview({ html: state.html, payload: state.payload });
+      setPreviewKey((k) => k + 1);
       startTransition(() => {
         setPreviews([]);
         if (fileInputRef.current) fileInputRef.current.value = "";
@@ -87,34 +78,35 @@ export function CreateWorkbench({
     } else {
       toast.error(state.message);
     }
-  }, [state, router]);
+  }, [state]);
 
   async function handleExportPng() {
-    if (!previewId || exportingPng) return;
+    if (!sessionPreview || exportingPng) return;
     setExportingPng(true);
     try {
-      const res = await fetch(`/api/generations/${previewId}/export`, {
+      const res = await fetch("/api/export/png", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ payload: sessionPreview.payload }),
       });
-      const data = (await res.json()) as {
-        ok?: boolean;
-        url?: string;
-        message?: string;
-      };
-      if (!data?.ok || !data.url) {
+      const ct = res.headers.get("content-type") || "";
+      if (!res.ok || ct.includes("application/json")) {
+        const data = (await res.json().catch(() => null)) as {
+          message?: string;
+        } | null;
         toast.error(data?.message || EXPORT_FAIL_MSG);
         return;
       }
-      const imgRes = await fetch(data.url);
-      if (!imgRes.ok) {
+      if (!ct.includes("image/png")) {
         toast.error(EXPORT_FAIL_MSG);
         return;
       }
-      const blob = await imgRes.blob();
+      const blob = await res.blob();
       const objectUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = objectUrl;
-      a.download = `detail-${previewId}.png`;
+      a.download = "detail.png";
       a.rel = "noopener";
       document.body.appendChild(a);
       a.click();
@@ -148,11 +140,11 @@ export function CreateWorkbench({
             상세페이지 만들기
           </h1>
           <p className="mt-1.5 text-[14px] leading-relaxed text-muted-foreground">
-            입력 내용을 바탕으로 세로형 레이아웃을 구성합니다. 완성 후 이미지로
-            내려받을 수 있습니다.
+            이번 세션에서만 결과가 유지됩니다. 새로 만들면 이전 미리보기는
+            바뀌고, 새로고침하면 사라집니다.
           </p>
         </div>
-        {previewId && (
+        {sessionPreview && (
           <Button
             type="button"
             variant="secondary"
@@ -402,16 +394,17 @@ export function CreateWorkbench({
                 미리보기
               </CardTitle>
               <CardDescription className="text-[13px] leading-relaxed">
-                완성된 레이아웃을 바로 확인하세요. 저장 시 긴 세로 이미지 한 장으로
-                받습니다.
+                이번에 만든 결과만 표시됩니다. PNG는 현재 미리보기 기준으로
+                생성됩니다.
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              {previewId ? (
+              {sessionPreview ? (
                 <iframe
+                  key={previewKey}
                   title="preview"
                   className="h-[min(78vh,920px)] w-full bg-muted/30"
-                  src={`/api/generations/${previewId}/preview`}
+                  srcDoc={sessionPreview.html}
                 />
               ) : (
                 <div className="flex h-[min(78vh,920px)] flex-col items-center justify-center gap-3 p-8 text-center text-muted-foreground">
@@ -420,39 +413,6 @@ export function CreateWorkbench({
                     정보를 입력하고 만들기를 누르면 이곳에 결과가 나타납니다.
                   </p>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/80 shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-[15px] font-semibold tracking-tight">
-                최근 작업
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {recentGenerations.length === 0 ? (
-                <p className="text-[13px] text-muted-foreground">
-                  아직 작업이 없습니다.
-                </p>
-              ) : (
-                recentGenerations.map((g) => (
-                  <button
-                    key={g.id}
-                    type="button"
-                    onClick={() => {
-                      router.replace(`/create?g=${g.id}`);
-                    }}
-                    className="flex w-full flex-col items-start gap-0.5 rounded-lg border border-transparent px-2 py-2 text-left text-sm transition hover:border-border hover:bg-muted/40"
-                  >
-                    <span className="line-clamp-1 font-medium">
-                      {g.product_description}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(g.created_at).toLocaleString("ko-KR")}
-                    </span>
-                  </button>
-                ))
               )}
             </CardContent>
           </Card>
