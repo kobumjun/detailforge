@@ -1,70 +1,143 @@
 "use server";
 
+import { Buffer } from "node:buffer";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getBillingProvider } from "@/lib/billing";
-import type { CreditPackId } from "@/lib/billing/types";
+import { CREDIT_PACKAGES, isCreditPackageId } from "@/lib/billing/credit-packages";
+import {
+  getPublicSiteUrl,
+  getStdPayScriptUrl,
+  requireInicisMid,
+  requireInicisSignKey,
+} from "@/lib/inicis/config";
+import { inicisStdPayRequestHashes } from "@/lib/inicis/crypto";
 
-export type CheckoutState =
-  | { ok: true; message: string; orderId?: string }
+export type PrepareInicisState =
+  | {
+      ok: true;
+      /** INIStdPay hidden input name → value */
+      formFields: Record<string, string>;
+      stdpayScriptUrl: string;
+      formId: string;
+    }
   | { ok: false; message: string };
 
-export async function startCheckoutAction(
-  _prev: CheckoutState | undefined,
-  formData: FormData,
-): Promise<CheckoutState> {
+function newOrderId(): string {
+  return `df_${crypto.randomUUID().replace(/-/g, "")}`;
+}
+
+function limitUtf8Bytes(s: string, maxBytes: number): string {
+  const buf = Buffer.from(s, "utf8");
+  if (buf.length <= maxBytes) return s;
+  let len = maxBytes;
+  while (len > 0 && (buf[len - 1] & 0xc0) === 0x80) len--;
+  return buf.subarray(0, len).toString("utf8");
+}
+
+/**
+ * KG이니시스 웹표준(INIStdPay) 호출 직전 pending 행 생성 및 서명 필드 반환.
+ */
+export async function prepareInicisStdPay(
+  packageId: string,
+): Promise<PrepareInicisState> {
+  if (!isCreditPackageId(packageId)) {
+    return { ok: false, message: "유효하지 않은 상품입니다." };
+  }
+
+  let mid: string;
+  let signKey: string;
+  try {
+    mid = requireInicisMid();
+    signKey = requireInicisSignKey();
+  } catch {
+    return {
+      ok: false,
+      message: "결제 설정(INICIS_MID, INICIS_SIGN_KEY)이 필요합니다.",
+    };
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, message: "로그인이 필요합니다." };
 
-  const packId = String(formData.get("packId") || "") as CreditPackId;
-  if (!["pack_10", "pack_30", "pack_100"].includes(packId)) {
-    return { ok: false, message: "유효하지 않은 패키지입니다." };
-  }
-
-  const provider = getBillingProvider();
-  const result = await provider.createCheckout({
-    packId,
-    userId: user.id,
-    email: user.email,
+  const pack = CREDIT_PACKAGES[packageId];
+  const oid = newOrderId();
+  const price = String(pack.amountKrw);
+  const timestamp = Date.now().toString();
+  const { signature, verification, mKey } = inicisStdPayRequestHashes({
+    oid,
+    price,
+    timestamp,
+    signKey,
   });
 
-  const { data: order, error } = await supabase
-    .from("payment_orders")
-    .insert({
-      user_id: user.id,
-      provider: result.provider,
-      status: result.ok ? "pending" : "failed",
-      credits_requested:
-        packId === "pack_10" ? 10 : packId === "pack_30" ? 30 : 100,
-      external_id: result.orderId,
-      payload: { result, packId },
-    })
-    .select("id")
-    .single();
+  const site = getPublicSiteUrl();
+  const returnUrl = `${site}/api/payments/inicis/return`;
+  const closeUrl = `${site}/billing?inicis_closed=1`;
+
+  const email = user.email ?? "";
+  const buyername = limitUtf8Bytes(
+    email.split("@")[0] || "customer",
+    30,
+  );
+  const goodname = limitUtf8Bytes(
+    `DetailForge 크레딧 ${pack.credits}`,
+    40,
+  );
+
+  const merchantData = JSON.stringify({
+    u: user.id,
+    p: packageId,
+  });
+
+  const { error } = await supabase.from("payments").insert({
+    user_id: user.id,
+    package_id: packageId,
+    credits: pack.credits,
+    amount_krw: pack.amountKrw,
+    provider: "inicis",
+    order_id: oid,
+    status: "pending",
+  });
 
   if (error) {
+    console.error("[billing] insert payment", error);
     return {
       ok: false,
-      message: "주문 기록에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+      message: "결제 준비에 실패했습니다. 잠시 후 다시 시도해 주세요.",
     };
   }
 
   revalidatePath("/billing");
 
-  if (!result.ok) {
-    return { ok: false, message: result.message || "결제를 시작할 수 없습니다." };
-  }
+  const formFields: Record<string, string> = {
+    version: "1.0",
+    gopaymethod: "Card",
+    mid,
+    oid,
+    price,
+    timestamp,
+    use_chkfake: "Y",
+    signature,
+    verification,
+    mKey,
+    currency: "WON",
+    goodname,
+    buyername,
+    buyertel: "010-0000-0000",
+    buyeremail: email || "noreply@example.com",
+    returnUrl,
+    closeUrl,
+    acceptmethod: "centerCd(Y)",
+    merchantData,
+  };
 
   return {
     ok: true,
-    orderId: order?.id,
-    message:
-      result.message ||
-      (result.checkoutUrl
-        ? "결제 페이지로 이동합니다."
-        : "요청이 접수되었습니다. 결제가 완료되면 크레딧이 반영됩니다."),
+    formFields,
+    stdpayScriptUrl: getStdPayScriptUrl(),
+    formId: "df_inicis_std_pay_form",
   };
 }

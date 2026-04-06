@@ -9,14 +9,16 @@ async function BillingInner() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data: recentOrders } = await supabase
-    .from("payment_orders")
-    .select("id, provider, status, credits_requested, created_at")
+  const { data: recentPayments } = await supabase
+    .from("payments")
+    .select(
+      "id, package_id, credits, amount_krw, status, order_id, created_at, credits_granted_at",
+    )
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
-    .limit(15);
+    .limit(20);
 
-  return <BillingPlans recentOrders={recentOrders ?? []} />;
+  return <BillingPlans recentPayments={recentPayments ?? []} />;
 }
 
 export default function BillingPage() {

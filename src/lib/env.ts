@@ -13,5 +13,3 @@ export const textGenProvider = () =>
 export const imageGenProvider = () =>
   (process.env.IMAGE_GEN_PROVIDER?.trim() || "mock").toLowerCase();
 
-export const paymentProvider = () =>
-  (process.env.PAYMENT_PROVIDER || "mock").toLowerCase();

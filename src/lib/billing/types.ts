@@ -1,3 +1,6 @@
+/**
+ * @deprecated LemonSqueezy·mock 결제용 타입. 신규는 credit-packages.ts 사용.
+ */
 export type CreditPackId = "pack_10" | "pack_30" | "pack_100";
 
 export interface CheckoutRequest {
@@ -19,6 +22,7 @@ export interface BillingProvider {
   createCheckout(req: CheckoutRequest): Promise<CheckoutResult>;
 }
 
+/** @deprecated 레거시 팩 ID. 신규는 credit-packages.ts 사용. */
 export const CREDIT_PACKS: Record<
   CreditPackId,
   { label: string; credits: number; description: string }
