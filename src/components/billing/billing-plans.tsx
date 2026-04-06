@@ -96,9 +96,6 @@ export function BillingPlans({
   const searchParams = useSearchParams();
   const formRef = useRef<HTMLFormElement | null>(null);
   const [busyId, setBusyId] = useState<CreditPackageId | null>(null);
-  const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(
-    null,
-  );
 
   const showReturnToasts = useCallback(() => {
     if (searchParams.get("pay_ok") === "1") {
@@ -207,29 +204,6 @@ export function BillingPlans({
     }
   };
 
-  const cancelPayment = async (orderId: string) => {
-    setCancellingOrderId(orderId);
-    try {
-      const res = await fetch("/api/payments/cancel", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ orderId }),
-      });
-      const data = (await res.json()) as { ok?: boolean; message?: string };
-      if (!res.ok || !data.ok) {
-        toast.error(data.message || "취소에 실패했습니다.");
-        return;
-      }
-      toast.success(data.message || "취소되었습니다.");
-      router.refresh();
-    } catch {
-      toast.error("취소 요청 중 오류가 발생했습니다.");
-    } finally {
-      setCancellingOrderId(null);
-    }
-  };
-
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
       <form
@@ -301,6 +275,9 @@ export function BillingPlans({
           <CardDescription className="text-[13px] leading-relaxed">
             KG이니시스 카드 결제 충전 내역입니다.
           </CardDescription>
+          <p className="text-[11px] leading-relaxed text-muted-foreground/80">
+            결제 취소·환불은 고객센터를 통해 문의해 주세요.
+          </p>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           {recentPayments.length === 0 ? (
@@ -327,20 +304,6 @@ export function BillingPlans({
                   <Badge variant="outline" className="text-[11px]">
                     {statusLabel(o.status)}
                   </Badge>
-                  {o.status === "paid" && (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      className="text-[12px]"
-                      disabled={cancellingOrderId !== null}
-                      onClick={() => void cancelPayment(o.order_id)}
-                    >
-                      {cancellingOrderId === o.order_id
-                        ? "취소 중…"
-                        : "결제 취소"}
-                    </Button>
-                  )}
                 </div>
               </div>
             ))
