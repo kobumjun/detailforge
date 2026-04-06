@@ -35,10 +35,36 @@ function limitUtf8Bytes(s: string, maxBytes: number): string {
 }
 
 /**
+ * returnUrl/closeUrl 베이스: env와 실제 브라우저 origin 불일치(localhost vs 127.0.0.1 등) 시
+ * 세션 쿠키가 안 실려 /billing 복귀 때 미들웨어가 로그인으로 보내는 문제를 막기 위해
+ * 신뢰할 수 있는 경우에만 클라이언트 origin을 사용합니다.
+ */
+function resolveInicisPublicBase(browserOrigin: string | undefined): string {
+  const configured = getPublicSiteUrl();
+  if (!browserOrigin?.trim()) return configured;
+  try {
+    const b = new URL(browserOrigin);
+    if (b.protocol !== "http:" && b.protocol !== "https:") return configured;
+    const candidate = `${b.protocol}//${b.host}`;
+    const cfg = new URL(configured);
+    const configuredOrigin = `${cfg.protocol}//${cfg.host}`;
+    if (candidate === configuredOrigin) return candidate;
+    const isDev = process.env.NODE_ENV === "development";
+    const h = b.hostname;
+    if (isDev && (h === "localhost" || h === "127.0.0.1")) return candidate;
+    return configured;
+  } catch {
+    return configured;
+  }
+}
+
+/**
  * KG이니시스 웹표준(INIStdPay) 호출 직전 pending 행 생성 및 서명 필드 반환.
+ * @param browserOrigin 결제를 연 브라우저의 `window.location.origin` (close/return URL 쿠키 일치용)
  */
 export async function prepareInicisStdPay(
   packageId: string,
+  browserOrigin?: string,
 ): Promise<PrepareInicisState> {
   if (!isCreditPackageId(packageId)) {
     return { ok: false, message: "유효하지 않은 상품입니다." };
@@ -73,7 +99,7 @@ export async function prepareInicisStdPay(
     signKey,
   });
 
-  const site = getPublicSiteUrl();
+  const site = resolveInicisPublicBase(browserOrigin);
   const returnUrl = `${site}/api/payments/inicis/return`;
   const closeUrl = `${site}/billing?inicis_closed=1`;
 

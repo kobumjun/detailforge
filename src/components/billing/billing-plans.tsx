@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { prepareInicisStdPay } from "@/app/actions/billing";
-import type { PrepareInicisState } from "@/app/actions/billing";
 import {
   CREDIT_PACKAGES,
   CREDIT_PACKAGE_ORDER,
@@ -20,6 +19,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+
+/** 서버 액션 `prepareInicisStdPay` 의 formId 와 반드시 동일 */
+const INICIS_STDPAY_FORM_ID = "df_inicis_std_pay_form";
 
 declare global {
   interface Window {
@@ -66,6 +68,25 @@ function loadStdPayScript(src: string): Promise<void> {
   });
 }
 
+function fillStdPayForm(form: HTMLFormElement, fields: Record<string, string>) {
+  form.replaceChildren();
+  for (const [name, value] of Object.entries(fields)) {
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = name;
+    input.value = value;
+    form.appendChild(input);
+  }
+}
+
+function doubleRaf(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => resolve());
+    });
+  });
+}
+
 export function BillingPlans({
   recentPayments,
 }: {
@@ -73,13 +94,11 @@ export function BillingPlans({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const formRef = useRef<HTMLFormElement | null>(null);
   const [busyId, setBusyId] = useState<CreditPackageId | null>(null);
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(
     null,
   );
-  const [stdPayLaunch, setStdPayLaunch] = useState<
-    Extract<PrepareInicisState, { ok: true }> | null
-  >(null);
 
   const showReturnToasts = useCallback(() => {
     if (searchParams.get("pay_ok") === "1") {
@@ -139,49 +158,51 @@ export function BillingPlans({
     }
   }, [router, searchParams]);
 
-  useEffect(() => {
-    if (!stdPayLaunch) return;
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        await loadStdPayScript(stdPayLaunch.stdpayScriptUrl);
-        if (cancelled) return;
-        await new Promise<void>((r) => requestAnimationFrame(() => r()));
-        if (cancelled) return;
-        if (!window.INIStdPay?.pay) {
-          toast.error("KG이니시스 결제 모듈을 불러오지 못했습니다.");
-          return;
-        }
-        window.INIStdPay.pay(stdPayLaunch.formId);
-      } catch {
-        if (!cancelled) toast.error("결제 스크립트를 불러오지 못했습니다.");
-      } finally {
-        if (!cancelled) {
-          setStdPayLaunch(null);
-          setBusyId(null);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [stdPayLaunch]);
-
   const pay = async (packageId: CreditPackageId) => {
     setBusyId(packageId);
     try {
-      const prep = await prepareInicisStdPay(packageId);
+      const browserOrigin =
+        typeof window !== "undefined" ? window.location.origin : undefined;
+      const prep = await prepareInicisStdPay(packageId, browserOrigin);
       if (!prep.ok) {
         toast.error(prep.message);
-        setBusyId(null);
         return;
       }
-      setStdPayLaunch(prep);
+
+      const form =
+        formRef.current ?? document.getElementById(INICIS_STDPAY_FORM_ID);
+      if (!form || !(form instanceof HTMLFormElement)) {
+        console.error(
+          "[inicis] INIStdPay form not in DOM",
+          INICIS_STDPAY_FORM_ID,
+        );
+        toast.error("결제 폼을 준비하지 못했습니다. 새로고침 후 다시 시도해 주세요.");
+        return;
+      }
+
+      fillStdPayForm(form, prep.formFields);
+
+      await loadStdPayScript(prep.stdpayScriptUrl);
+
+      await doubleRaf();
+
+      const ready = document.getElementById(INICIS_STDPAY_FORM_ID);
+      if (!ready || !(ready instanceof HTMLFormElement)) {
+        console.error("[inicis] form missing after layout", INICIS_STDPAY_FORM_ID);
+        toast.error("결제 폼을 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.");
+        return;
+      }
+
+      if (!window.INIStdPay?.pay) {
+        toast.error("KG이니시스 결제 모듈을 불러오지 못했습니다.");
+        return;
+      }
+
+      window.INIStdPay.pay(INICIS_STDPAY_FORM_ID);
     } catch (e) {
       console.error(e);
       toast.error("결제 준비 중 오류가 발생했습니다.");
+    } finally {
       setBusyId(null);
     }
   };
@@ -211,18 +232,13 @@ export function BillingPlans({
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-      {stdPayLaunch ? (
-        <form
-          id={stdPayLaunch.formId}
-          method="post"
-          style={{ display: "none" }}
-          aria-hidden
-        >
-          {Object.entries(stdPayLaunch.formFields).map(([name, value]) => (
-            <input key={name} type="hidden" name={name} value={value} readOnly />
-          ))}
-        </form>
-      ) : null}
+      <form
+        ref={formRef}
+        id={INICIS_STDPAY_FORM_ID}
+        method="post"
+        style={{ display: "none" }}
+        aria-hidden
+      />
 
       <div className="mb-8">
         <h1 className="text-2xl font-bold tracking-[-0.03em] sm:text-[1.75rem]">
@@ -265,7 +281,7 @@ export function BillingPlans({
               <CardFooter>
                 <Button
                   type="button"
-                  disabled={loading || busyId !== null || stdPayLaunch !== null}
+                  disabled={loading || busyId !== null}
                   className="w-full font-semibold"
                   onClick={() => void pay(id)}
                 >
