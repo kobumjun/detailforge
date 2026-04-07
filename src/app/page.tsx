@@ -103,7 +103,7 @@ export default function LandingPage() {
             </Link>
           </div>
           <p className="mt-4 text-[12px] leading-relaxed text-muted-foreground">
-            회원가입 시 2크레딧 제공 · 상세페이지 1회 생성 시 1크레딧 사용
+            회원가입 시 3크레딧 제공 · 상세페이지 1회 생성 시 1크레딧 사용
           </p>
         </div>
       </section>

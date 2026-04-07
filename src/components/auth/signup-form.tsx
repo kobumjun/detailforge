@@ -57,7 +57,7 @@ export function SignupForm() {
       <CardHeader>
         <CardTitle className="text-xl">회원가입</CardTitle>
         <CardDescription className="text-[13px] leading-relaxed">
-          가입 시 2크레딧을 드립니다. 바로 상세페이지를 만들어 보세요.
+          가입 시 3크레딧을 드립니다. 바로 상세페이지를 만들어 보세요.
         </CardDescription>
       </CardHeader>
       <CardContent>
