@@ -16,6 +16,8 @@ export class OpenAIImageGenProvider implements ImageGenProvider {
 
     const grounded = [
       "Depict only the described product category. No unrelated nature landscapes, oceans, forests, or generic scenery.",
+      "No text, no typography, no letters, no numbers, no logos, no watermark, no label text.",
+      "Realistic commercial product photo, natural lighting, clean ecommerce visual, non-stylized, minimal artificial effects.",
       input.prompt,
     ]
       .join(" ")

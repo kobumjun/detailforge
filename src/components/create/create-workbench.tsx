@@ -139,10 +139,6 @@ export function CreateWorkbench({ creditLogs }: { creditLogs: CreditLogRow[] }) 
           <h1 className="text-2xl font-bold tracking-[-0.03em] text-foreground sm:text-[1.75rem]">
             상세페이지 만들기
           </h1>
-          <p className="mt-1.5 text-[14px] leading-relaxed text-muted-foreground">
-            이번 세션에서만 결과가 유지됩니다. 새로 만들면 이전 미리보기는
-            바뀌고, 새로고침하면 사라집니다.
-          </p>
         </div>
         {sessionPreview && (
           <Button

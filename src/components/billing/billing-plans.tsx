@@ -248,9 +248,6 @@ export function BillingPlans({
                 <p className="text-lg font-semibold tabular-nums text-foreground">
                   {won(pack.amountKrw)}
                 </p>
-                <p>
-                  인증 후 서버에서 승인·금액을 검증한 뒤에만 크레딧이 지급됩니다.
-                </p>
               </CardContent>
               <CardFooter>
                 <Button

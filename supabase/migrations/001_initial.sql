@@ -107,7 +107,7 @@ create policy "generation_images_insert_own"
   on public.generation_images for insert
   with check (auth.uid() = user_id);
 
--- New user: 3 credits
+-- New user: 2 credits
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -116,11 +116,11 @@ set search_path = public
 as $$
 begin
   insert into public.profiles (id, email, credits)
-  values (new.id, new.email, 3)
+  values (new.id, new.email, 2)
   on conflict (id) do update
     set email = excluded.email;
   insert into public.credit_logs (user_id, amount, type, reason)
-  values (new.id, 3, 'grant', 'signup_bonus');
+  values (new.id, 2, 'grant', 'signup_bonus');
   return new;
 end;
 $$;
