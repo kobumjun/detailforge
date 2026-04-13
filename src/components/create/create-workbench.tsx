@@ -3,17 +3,26 @@
 import {
   startTransition,
   useActionState,
+  useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import { toast } from "sonner";
-import { Download, Loader2, Sparkles, Upload } from "lucide-react";
+import { Download, FolderOpen, Loader2, Sparkles, Upload } from "lucide-react";
 import {
   generateDetailAction,
   type GenerateState,
 } from "@/app/actions/generation";
 import type { GenerationPayload } from "@/lib/generation/types";
+import { renderDetailDocument } from "@/lib/generation/render-html";
+import {
+  listLocalDetailDrafts,
+  removeLocalDetailDraft,
+  saveLocalDetailDraft,
+} from "@/lib/create/local-detail-drafts";
+import { DetailTextEditor } from "@/components/create/detail-text-editor";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -52,10 +61,19 @@ export function CreateWorkbench({ creditLogs }: { creditLogs: CreditLogRow[] }) 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [exportingPng, setExportingPng] = useState(false);
   const [sessionPreview, setSessionPreview] = useState<{
-    html: string;
     payload: GenerationPayload;
   } | null>(null);
-  const [previewKey, setPreviewKey] = useState(0);
+  const [draftListTick, setDraftListTick] = useState(0);
+
+  const previewHtml = useMemo(() => {
+    if (!sessionPreview) return "";
+    try {
+      return renderDetailDocument(sessionPreview.payload);
+    } catch (e) {
+      console.error("[preview]", e);
+      return `<!DOCTYPE html><html lang="ko"><meta charset="utf-8"/><body style="font-family:system-ui;padding:24px">미리보기를 렌더링하지 못했습니다.</body></html>`;
+    }
+  }, [sessionPreview]);
 
   const EXPORT_FAIL_MSG =
     "이미지 생성 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.";
@@ -69,8 +87,7 @@ export function CreateWorkbench({ creditLogs }: { creditLogs: CreditLogRow[] }) 
     if (!state) return;
     if (state.ok) {
       toast.success("상세페이지가 준비되었습니다. 새로고침하면 사라집니다.");
-      setSessionPreview({ html: state.html, payload: state.payload });
-      setPreviewKey((k) => k + 1);
+      setSessionPreview({ payload: state.payload });
       startTransition(() => {
         setPreviews([]);
         if (fileInputRef.current) fileInputRef.current.value = "";
@@ -79,6 +96,15 @@ export function CreateWorkbench({ creditLogs }: { creditLogs: CreditLogRow[] }) 
       toast.error(state.message);
     }
   }, [state]);
+
+  const handlePayloadChange = useCallback((next: GenerationPayload) => {
+    setSessionPreview({ payload: next });
+  }, []);
+
+  const localDrafts = useMemo(
+    () => listLocalDetailDrafts(),
+    [sessionPreview, draftListTick],
+  );
 
   async function handleExportPng() {
     if (!sessionPreview || exportingPng) return;
@@ -347,6 +373,114 @@ export function CreateWorkbench({ creditLogs }: { creditLogs: CreditLogRow[] }) 
             </CardContent>
           </Card>
 
+          {sessionPreview ? (
+            <Card className="border-border/80 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-[15px] font-semibold tracking-tight">
+                  텍스트 편집
+                </CardTitle>
+                <CardDescription className="text-[13px] leading-relaxed">
+                  수정 내용은 오른쪽 미리보기와 PNG 저장에 즉시 반영됩니다.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <DetailTextEditor
+                  payload={sessionPreview.payload}
+                  onChange={handlePayloadChange}
+                />
+              </CardContent>
+            </Card>
+          ) : null}
+
+          <Card className="border-border/80 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-[15px] font-semibold tracking-tight">
+                브라우저 임시 보관
+              </CardTitle>
+              <CardDescription className="text-[13px] leading-relaxed">
+                최근 작업물 최대 2개만 이 기기에 저장됩니다. 다른 기기나
+                시크릿 창과는 공유되지 않습니다.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {sessionPreview ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-2 sm:w-auto"
+                  onClick={() => {
+                    const ok = saveLocalDetailDraft(sessionPreview.payload);
+                    setDraftListTick((t) => t + 1);
+                    if (ok) {
+                      toast.success("이 브라우저에 저장했습니다.");
+                    } else {
+                      toast.error(
+                        "저장에 실패했습니다. 저장 공간이나 설정을 확인해 주세요.",
+                      );
+                    }
+                  }}
+                >
+                  현재 결과를 임시 저장
+                </Button>
+              ) : (
+                <p className="text-[12px] text-muted-foreground">
+                  생성 후 &quot;임시 저장&quot;을 누르면 여기에 쌓입니다.
+                </p>
+              )}
+              {localDrafts.length === 0 ? (
+                <p className="text-[13px] text-muted-foreground">
+                  저장된 임시 작업이 없습니다.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {localDrafts.map((d) => (
+                    <li
+                      key={d.id}
+                      className="flex flex-col gap-2 rounded-md border border-border/60 bg-muted/15 p-3 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-[13px] font-medium">
+                          {d.summary}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {new Date(d.savedAt).toLocaleString("ko-KR")}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          className="gap-1"
+                          onClick={() => {
+                            setSessionPreview({ payload: d.payload });
+                            toast.message("임시 저장본을 불러왔습니다.");
+                          }}
+                        >
+                          <FolderOpen className="size-3.5" />
+                          불러오기
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="text-muted-foreground"
+                          onClick={() => {
+                            removeLocalDetailDraft(d.id);
+                            setDraftListTick((t) => t + 1);
+                          }}
+                        >
+                          삭제
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+
           <Card className="border-border/80 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-[15px] font-semibold tracking-tight">
@@ -390,17 +524,17 @@ export function CreateWorkbench({ creditLogs }: { creditLogs: CreditLogRow[] }) 
                 미리보기
               </CardTitle>
               <CardDescription className="text-[13px] leading-relaxed">
-                이번에 만든 결과만 표시됩니다. PNG는 현재 미리보기 기준으로
-                생성됩니다.
+                이번에 만든 결과만 표시됩니다. PNG는 왼쪽에서 수정한 내용
+                기준으로 생성됩니다.
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               {sessionPreview ? (
                 <iframe
-                  key={previewKey}
+                  key={sessionPreview.payload.createdAt}
                   title="preview"
                   className="h-[min(78vh,920px)] w-full bg-muted/30"
-                  srcDoc={sessionPreview.html}
+                  srcDoc={previewHtml}
                 />
               ) : (
                 <div className="flex h-[min(78vh,920px)] flex-col items-center justify-center gap-3 p-8 text-center text-muted-foreground">
