@@ -17,6 +17,12 @@ function clonePayload(p: GenerationPayload): GenerationPayload {
   return JSON.parse(JSON.stringify(p)) as GenerationPayload;
 }
 
+/** 한 줄 필드 배열 ↔ textarea: 빈 줄·맨 끝 줄바꿈 유지 (trim/filter 금지). */
+function linesFromMultiline(value: string): string[] {
+  if (value === "") return [];
+  return value.split("\n");
+}
+
 type Props = {
   payload: GenerationPayload;
   onChange: (next: GenerationPayload) => void;
@@ -152,10 +158,7 @@ function V2Editor({
               rows={2}
               value={heroBlock.badges.join("\n")}
               onChange={(e) => {
-                const badges = e.target.value
-                  .split("\n")
-                  .map((s) => s.trim())
-                  .filter(Boolean);
+                const badges = linesFromMultiline(e.target.value);
                 const nextBlock: CommerceBlock = { ...heroBlock, badges };
                 emit({
                   ...payload,
@@ -204,10 +207,7 @@ function V2Editor({
                 rows={5}
                 value={checklistBlock.items.join("\n")}
                 onChange={(e) => {
-                  const items = e.target.value
-                    .split("\n")
-                    .map((s) => s.trim())
-                    .filter(Boolean);
+                  const items = linesFromMultiline(e.target.value);
                   const nextBlock: CommerceBlock = {
                     ...checklistBlock,
                     items,
