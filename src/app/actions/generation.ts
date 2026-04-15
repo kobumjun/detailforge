@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { buildGenerationPayload } from "@/lib/generation/build-sections";
 import { stabilizeGenerationPayloadImages } from "@/lib/generation/persist-remote-images";
 import { renderDetailDocument } from "@/lib/generation/render-html";
+import { applyVariantPreset } from "@/lib/create/generation-presets";
 import type {
   GenerationOptions,
   GenerationPayload,
@@ -69,15 +70,49 @@ export async function generateDetailAction(
     return { ok: false, message: "상품 설명을 입력해 주세요." };
   }
 
+  const generationMode = String(formData.get("generationMode") || "quick").trim();
+  const presetRaw = String(formData.get("preset") || "").trim() || undefined;
+
   const targetCustomer = String(formData.get("targetCustomer") || "").trim() || undefined;
-  const tone = (String(formData.get("tone") || "premium") as ToneOption) || "premium";
+  let tone = (String(formData.get("tone") || "premium") as ToneOption) || "premium";
   const colorHint = String(formData.get("colorHint") || "").trim() || undefined;
-  const sellingPoints = String(formData.get("sellingPoints") || "").trim() || undefined;
-  const template = (String(formData.get("template") || "aurora") as TemplateId) || "aurora";
-  const length = (String(formData.get("length") || "medium") as DetailLength) || "medium";
+  let sellingPoints = String(formData.get("sellingPoints") || "").trim() || undefined;
+  let template = (String(formData.get("template") || "aurora") as TemplateId) || "aurora";
+  let length = (String(formData.get("length") || "medium") as DetailLength) || "medium";
   const aiFillImages = formData.get("aiFillImages") === "on";
 
   const imageFiles = formData.getAll("images").filter((x): x is File => x instanceof File);
+  const nonEmptyImageFiles = imageFiles.filter((f) => f.size > 0);
+
+  if (generationMode === "quick") {
+    if (!String(formData.get("targetCustomer") || "").trim()) {
+      return {
+        ok: false,
+        message: "빠른 생성 모드에서는 타겟 고객을 입력해 주세요.",
+      };
+    }
+    if (nonEmptyImageFiles.length < 1) {
+      return {
+        ok: false,
+        message:
+          "빠른 생성 모드에서는 상품 사진을 1장 이상 올려 주세요. (고급 설정에서 전체 모드로 바꾸거나 비주얼 자동 보완을 켤 수 있습니다.)",
+      };
+    }
+  }
+
+  const patched = applyVariantPreset(presetRaw, {
+    tone,
+    targetCustomer,
+    sellingPoints,
+    colorHint,
+    length,
+    template,
+  });
+  tone = patched.tone;
+  template = patched.template;
+  length = patched.length;
+  sellingPoints = patched.sellingPoints;
+  const patchedTarget = patched.targetCustomer;
 
   const { data: rpcData, error: rpcErr } = await supabase.rpc("consume_credit", {
     p_amount: 1,
@@ -106,13 +141,13 @@ export async function generateDetailAction(
   }
 
   try {
-    const userImageUrls = await uploadUserImages(user.id, imageFiles);
+    const userImageUrls = await uploadUserImages(user.id, nonEmptyImageFiles);
 
     const options: GenerationOptions = {
       productDescription,
-      targetCustomer,
+      targetCustomer: patchedTarget ?? targetCustomer,
       tone,
-      colorHint,
+      colorHint: patched.colorHint ?? colorHint,
       sellingPoints,
       template,
       length,

@@ -18,7 +18,7 @@ function clonePayload(p: GenerationPayload): GenerationPayload {
 }
 
 /** 한 줄 필드 배열 ↔ textarea: 빈 줄·맨 끝 줄바꿈 유지 (trim/filter 금지). */
-function linesFromMultiline(value: string): string[] {
+export function linesFromMultiline(value: string): string[] {
   if (value === "") return [];
   return value.split("\n");
 }
